@@ -6,9 +6,39 @@ from collections import namedtuple
 import Network
 
 
+class MultiAgent():
+    """
+        Multi-Agent DDPG according to
+    """
+    def __init__(self, buffer_size, batch_size, gamma):
+        self.agents = []
+        self.agents.append( Agent(buffer_size=buffer_size, batch_size=batch_size, gamma=gamma) )
+        self.agents.append( Agent(buffer_size=buffer_size, batch_size=batch_size, gamma=gamma) )
+        self.num_agents = len(self.agents)
+
+    def action(self, state):
+        action = []
+        for agent in self.agents:
+            action.append( agent.action(state) )
+
+        return action
+
+
+    def learn(self):
+        for agent in self.agents:
+            agent.learn()
+        
+    def update_target_nets(self):
+        for agent in self.agents:
+            agent.update_target_nets()
+    
+
 
 
 class Agent():
+    """
+        DDPG-Agent according to 
+    """
     def __init__(self, buffer_size, batch_size, gamma):
         if not batch_size < buffer_size:
             raise Exception()
@@ -22,8 +52,12 @@ class Agent():
         # Seed the random number generator
         random.seed()
         # QNetwork - We choose the simple network
-        self.actor_net = Network.network_actor()
-        self.critic_net = Network.network_critic()
+        self.actor_local = Network.network_actor()
+        self.actor_target = Network.network_actor()
+
+        self.critic_local = Network.network_critic()
+        self.critic_target = Network.network_critic()
+
 
     # Let the agent learn from experience
     def learn(self):
@@ -33,51 +67,60 @@ class Agent():
         Q_target = self.local_net.predict( state_batch )
         Q_next_state = np.max( self.target_net.predict(next_state_batch), axis=1 )
 
-        X = []
-        y = []
 
         # Batches need to be prepared before learning
-        for index, state in enumerate(state_batch):    
+        for index in range(number_agents):    
             # Calculate the next q-value according to SARSA-MAX   
             # Q_new w.r.t. action:
             if not done_batch[index]:
-                Q_new = reward_batch[index] + self.gamma * Q_next_state[index]
+                Q_target_batch = reward_batch + self.gamma * Q_next_state_batch
             else:
-                Q_new = reward_batch[index]
+                Q_target_batch = reward_batch
 
-            Q_target[index, action_batch[index]] = Q_new
 
-            X.append(state)
-            y.append(Q_target[index])
+            # Update critic:
+            #self.critic_local.fit(X_np, Q_target_batch, batch_size=self.batch_size, epochs=1, shuffle=False, verbose=1)
 
-        X_np = np.array(X)
-        y_np = np.array(y)
+            # Update actor:
+            #self.actor_local.fit(, None, batch_size=self.batch_size, epochs=1, shuffle=Flase, verbose=1)
 
-        print("X_np.shape: ", X_np.shape)
-        print("y_np.shape: ", y_np.shape)
+        
+        # Soft updates of target nets:
+        self.update_target_nets()
 
-        self.local_net.fit(X_np, y_np, batch_size=self.batch_size, epochs=1, shuffle=False, verbose=1)
+
+
+    def update_target_nets(self, tau=0.01):
+        # Implement soft update for later:
+        # get_weights()[0] -- weights
+        # get weights()[1] -- bias (if existent)
+        # Soft-update:
+        actor_weights_local = np.array( self.actor_local.get_weights() )
+        actor_weights_target = np.array( self.actor_target.get_weights() )
+        self.actor_target.set_weights( tau*actor_weights_local + (1-tau)*actor_weights_target )
+
+        critic_weights_local = np.array( self.critic_local.get_weights() )
+        critic_weights_target = np.array( self.critic_target.get_weights() )
+        self.critic_target.set_weights( tau*critic_weights_local + (1-tau)*critic_weights_target )
 
 
 
     # Take action according to epsilon-greedy-policy:
     def action(self, state, epsilon=0.9):
-        if random.random() > epsilon:
-            return random.randrange(0,4)
-        else:
-            return self.local_net(state)
-        
-        prob_distribution = self.local_net.predict(state.reshape(1,-1))
-        action = np.argmax(prob_distribution)
+        # Dummy action
+        action_size = 2
+        action = 2 * np.random.random_sample(action_size) - 1.0
         return action
 
     # Copy weights from short-term model to long-term model
     def update_target_net(self, tau=0.1):
-        # Implement soft update for later:
-        # get_weights()[0] -- weights
-        # get weights()[1] -- bias (if existent)
         # Soft-update:
-        self.actor_net.set_weights( tau*self.actor_net.get_weights() + (1-tau)*self.critic_net.get_weights() )
+        actor_weights_local = np.appay( self.actor_local.get_weights() )
+        actor_weights_target = np.array( self.arctor_target.get_weights() )
+        self.actor_target.set_weights( tau*actor_weights_local + (1-tau)*actor_weights_target )
+        critic_weights_local = np.array( self.actor_local.get_weights() )
+        critic_weights_target = np.array( self.target_local_get_weights() )
+        self.critic_target.set_weights( tau*critic_weights_local + (1-tau)*critic_weights_target )
 
 
 
@@ -109,3 +152,14 @@ class ReplayBuffer():
     # Get length of memory
     def buffer_usage(self):
         return len(self.replay_buffer) > self.batch_size
+
+
+
+
+class Noise():
+    def __init__(self):
+        pass
+
+    def sample(self):
+        pass
+
