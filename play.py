@@ -8,11 +8,11 @@ brain_name = env.brain_names[0]
 brain = env.brains[brain_name]
 
 
-from Agent import Agent
+from Agent import MultiAgent
 from collections import namedtuple
 
 # Initialize the agent:
-agent = Agent(buffer_size=1000, batch_size=20, gamma=0.98)
+multi_agent = MultiAgent(buffer_size=1000, batch_size=20, gamma=0.98)
 
 # Reset the environment
 env_info = env.reset(train_mode=True)[brain_name]
@@ -36,8 +36,8 @@ Experience = namedtuple('Experience', ['state', 'action', 'reward', 'next_state'
 
 
 # Initial values:
-state = env_info.vector_observations[0]   # get the current state
-score = 0   # Score is NOT the discounted reward but the final 'Banana Score' of the game
+state = env_info.vector_observations[0] # get the current state
+score = 0                               # Score is NOT the discounted reward but the final 'Banana Score' of the game
 time = 0
 
 
@@ -50,20 +50,12 @@ def play_one_turn():
     # Select action according to policy:
     # action = ...
     # Select random action:
-    action = 2 * np.random.random_sample(2*action_size) - 1.0
+    action = multi_agent.action(state)
 
     print('Action taken: ', action, 'Time: ', time)
 
     # Take action and record the reward and the successive state
     env_info = env.step(action)[brain_name]
-    
-    """
-    try:
-        env_info = env.step(action)[brain_name]
-    except:
-        print("Final score: {}".format(score))
-        env.close()
-    """
 
     reward = env_info.rewards[0]
     next_state = env_info.vector_observations[0]
@@ -71,7 +63,7 @@ def play_one_turn():
 
     # Add experience to the agent's replay buffer:
     exp = Experience(state, action, reward, next_state, done)
-    agent.replay_buffer.insert_into_buffer( exp )
+    multi_agent.replay_buffer.insert_into_buffer( exp )
 
     # If buffer is sufficiently full, let the agent learn from his experience:
     #if agent.replay_buffer.buffer_usage():
@@ -89,7 +81,7 @@ while True:
         print("[Time: {}] Score".format(time))
     elif time%10 == 0:
         print("[Time: {}] Time to update the target net.".format(time))
-        print("Buffer usage: {}".format(agent.replay_buffer.buffer_usage()))
+        print("Buffer usage: {}".format(ma.replay_buffer.buffer_usage()))
         #agent.update_target_net()
 
     time += 1
