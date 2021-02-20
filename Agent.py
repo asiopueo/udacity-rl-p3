@@ -88,8 +88,6 @@ class Agent():
         # Soft updates of target nets:
         self.update_target_nets()
 
-
-
     def update_target_nets(self, tau=0.01):
         # Implement soft update for later:
         # get_weights()[0] -- weights
@@ -103,8 +101,6 @@ class Agent():
         critic_weights_target = np.array( self.critic_target.get_weights() )
         self.critic_target.set_weights( tau*critic_weights_local + (1-tau)*critic_weights_target )
 
-
-
     # Take action according to epsilon-greedy-policy:
     def action(self, state, epsilon=0.9):
         # Dummy action
@@ -112,15 +108,6 @@ class Agent():
         action = 2 * np.random.random_sample(action_size) - 1.0
         return action
 
-    # Copy weights from short-term model to long-term model
-    def update_target_net(self, tau=0.1):
-        # Soft-update:
-        actor_weights_local = np.appay( self.actor_local.get_weights() )
-        actor_weights_target = np.array( self.arctor_target.get_weights() )
-        self.actor_target.set_weights( tau*actor_weights_local + (1-tau)*actor_weights_target )
-        critic_weights_local = np.array( self.actor_local.get_weights() )
-        critic_weights_target = np.array( self.target_local_get_weights() )
-        self.critic_target.set_weights( tau*critic_weights_local + (1-tau)*critic_weights_target )
 
 
 
@@ -161,5 +148,7 @@ class Noise():
         pass
 
     def sample(self):
-        pass
+        mu = 0.0
+        sigma = 1.0
+        return np.random.random(mu, sigma)
 
