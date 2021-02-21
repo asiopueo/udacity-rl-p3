@@ -1,7 +1,9 @@
 from unityagents import UnityEnvironment
 import numpy as np
 
-# Initialization of Unity environment
+#################################
+#   Initialization:
+#################################
 env = UnityEnvironment(file_name="./Tennis_Linux/Tennis.x86_64")
 # get the default brain
 brain_name = env.brain_names[0]
@@ -41,10 +43,10 @@ score = 0                               # Score is NOT the discounted reward but
 time = 0
 
 
-#################################
-#   Play one episode:
-#################################
-def play_one_turn():
+#####################################
+#   Step-function and Main Loop:
+#####################################
+def step():
     global score, time, state, env_info
 
     # Select action according to policy:
@@ -66,6 +68,7 @@ def play_one_turn():
     multi_agent.replay_buffer.insert_into_buffer( exp )
 
     # If buffer is sufficiently full, let the agent learn from his experience:
+    # Move the learning procedures below!!
     #if agent.replay_buffer.buffer_usage():
     #    agent.learn()
 
@@ -73,18 +76,29 @@ def play_one_turn():
     state = next_state
 
 
+#agent.load_weights("./checkpoints")
 
-while True:
-    play_one_turn()
+while time < 100:
+    step()
     
-    if time%50 == 0:
+    if time%10 == 0:
         print("[Time: {}] Score".format(time))
-    elif time%10 == 0:
+    elif time%50 == 0:
         print("[Time: {}] Time to update the target net.".format(time))
         print("Buffer usage: {}".format(ma.replay_buffer.buffer_usage()))
         #agent.update_target_net()
 
     time += 1
+
+
+####################################
+#  Debriefing:
+####################################
+
+print("")
+print("Total score:", score)
+agent.save_weights("./checkpoints")
+
 
 
 
