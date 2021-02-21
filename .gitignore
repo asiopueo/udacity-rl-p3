@@ -5,4 +5,6 @@ __pycache__/
 *.log.swp
 *.code-workspace
 
+checkpoints/
+
 Tennis_Linux/

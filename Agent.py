@@ -77,13 +77,11 @@ class Agent():
             else:
                 Q_target_batch = reward_batch
 
-
-            # Update critic:
-            #self.critic_local.fit(X_np, Q_target_batch, batch_size=self.batch_size, epochs=1, shuffle=False, verbose=1)
-
             # Update actor:
             #self.actor_local.fit(, None, batch_size=self.batch_size, epochs=1, shuffle=Flase, verbose=1)
 
+            # Update critic:
+            #self.critic_local.fit(X_np, Q_target_batch, batch_size=self.batch_size, epochs=1, shuffle=False, verbose=1)
         
         # Soft updates of target nets:
         self.update_target_nets()
@@ -108,7 +106,29 @@ class Agent():
         action = 2 * np.random.random_sample(action_size) - 1.0
         return action
 
+    def random_action(self):
+        pass
 
+
+    def load_weights(self, path):
+        filepath = os.path.join(path, "actor_weights_latest.ckpt")
+        print("Loading actor network weights from", filepath)
+        self.actor_local_net.load_weights(filepath)
+        self.actor_target_net.load_weights(filepath)
+        filepath = os.path.join(path, "critic_weights_latest.ckpt")
+        print("Loading critic network weights from", filepath)
+        self.critic_local_net.load_weights(filepath)
+        self.critic_target_net.load_weights(filepath)
+
+    def save_weights(self, path):
+        filepath = os.path.join(path, "actor_weights_latest.ckpt")
+        print("Saving actor network weights to", filepath)
+        self.target_net.save_weights(filepath)
+        filepath = os.path.join(path, "critic_weights_latest.ckpt")
+        print("Saving critic network weights to", filepath)
+        self.target_net.save_weights(filepath)  
+
+ 
 
 
 class ReplayBuffer():
