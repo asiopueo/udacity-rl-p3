@@ -23,10 +23,16 @@ from keras import layers
 # between -1 and 1 which represent the torque applied to the two joints of
 # the robot arm
 
+state_size = 24
+action_size = 2
+fc1_units = 256
+fc2_units = 128
+
+
 def network_actor():
-    state_input = layers.Input( shape=(24,) )
-    fc1 = layers.Dense(256, activation='relu' )( state_input )
-    fc2 = layers.Dense(128, activation='relu' )( fc1 )
+    state_input = layers.Input( shape=(state_size),) )
+    fc1 = layers.Dense(fc1_units, activation='relu' )( state_input )
+    fc2 = layers.Dense(fc2_units, activation='relu' )( fc1 )
     action_output = layers.Dense(2, activation='tanh')( fc2 )
 
     model = Keras.Model(inputs=state_input, outputs=action_output)
@@ -34,10 +40,10 @@ def network_actor():
 
 
 def network_critic():
-    state_input = layers.Input( shape=(24,) )
-    action_input = layers.Input( shape=(2,) )
-    fc1 = layers.Dense(256, activation='relu' )( state_input )
-    fc2 = layers.Dense(128, activation='relu' )( [fc1, action_input] )
+    state_input = layers.Input( shape=(state_size,) )
+    action_input = layers.Input( shape=(action_size,) )
+    fc1 = layers.Dense(fc1_units, activation='relu' )( state_input )
+    fc2 = layers.Dense(fc2_units, activation='relu' )( [fc1, action_input] )
     action_output = layers.Dense(1, activation='tanh')( fc2 )
 
     model = Keras.Model(inputs=[state_input, action_input], outputs=value_output)
