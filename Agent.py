@@ -109,7 +109,7 @@ class Agent():
     def random_action(self):
         pass
 
-
+    # WARNING: Should each agent have its own, individual network?
     def load_weights(self, path):
         filepath = os.path.join(path, "actor_weights_latest.ckpt")
         print("Loading actor network weights from", filepath)
