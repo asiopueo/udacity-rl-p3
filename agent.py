@@ -33,6 +33,10 @@ class MultiAgent():
     def update_target_nets(self):
         for agent in self.agents:
             agent.update_target_nets()
+
+    def load_weights(self):
+        for agent in self.agents:
+            agent.load_weights()
     
 
 
@@ -60,9 +64,15 @@ class Agent():
         self.critic_local = Network.network_critic()
         self.critic_target = Network.network_critic()
 
+        self.hard_update_nets()
 
     # Let the agent learn from experience
     def learn(self):
+
+        # If buffer is sufficiently full, let the agent learn from his experience:
+        if not agent.replay_buffer.buffer_usage():
+            return
+
         # Retrieve batch of experiences from the replay buffer:
         state_batch, action_batch, reward_batch, next_state_batch, done_batch = self.replay_buffer.sample_from_buffer()
 
@@ -105,13 +115,18 @@ class Agent():
         # get_weights()[0] -- weights
         # get weights()[1] -- bias (if existent)
         # Soft-update:
-        actor_weights_local = np.array( self.actor_local.get_weights() )
-        actor_weights_target = np.array( self.actor_target.get_weights() )
+        actor_weights_local = np.array( self.actor_local.get_weights(), dtype=object )
+        actor_weights_target = np.array( self.actor_target.get_weights(), dtype=object )
         self.actor_target.set_weights( tau*actor_weights_local + (1-tau)*actor_weights_target )
 
-        critic_weights_local = np.array( self.critic_local.get_weights() )
-        critic_weights_target = np.array( self.critic_target.get_weights() )
+        critic_weights_local = np.array( self.critic_local.get_weights(), dtype=object )
+        critic_weights_target = np.array( self.critic_target.get_weights(), dtype=object )
         self.critic_target.set_weights( tau*critic_weights_local + (1-tau)*critic_weights_target )
+
+    def hard_update_nets(self):
+        self.actor_target.set_weights( self.actor_local.get_weights() )
+        self.critic_target.set_weights( self.critic_local.get_weights() )
+
 
     # Take action according to epsilon-greedy-policy:
     def action(self, state, epsilon=0.01):
@@ -134,11 +149,11 @@ class Agent():
         filepath = os.path.join(path, "actor_weights_latest.ckpt")
         print("Loading actor network weights from", filepath)
         self.actor_local_net.load_weights(filepath)
-        self.actor_target_net.load_weights(filepath)
         filepath = os.path.join(path, "critic_weights_latest.ckpt")
         print("Loading critic network weights from", filepath)
         self.critic_local_net.load_weights(filepath)
-        self.critic_target_net.load_weights(filepath)
+        
+        self.hard_update_nets()
 
     def save_weights(self, path):
         filepath = os.path.join(path, "actor_weights_latest.ckpt")
