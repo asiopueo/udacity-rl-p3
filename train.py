@@ -46,49 +46,46 @@ time = 0
 #####################################
 #   Step-function and Main Loop:
 #####################################
-def step():
-    global score, time, state, env_info
 
-    # Select action according to policy:
-    # action = ...
-    # Select random action:
-    action = multi_agent.action(state)
-
-    print('Action taken: ', action, 'Time: ', time)
-
-    # Take action and record the reward and the successive state
-    env_info = env.step(action)[brain_name]
-
-    reward = env_info.rewards[0]
-    next_state = env_info.vector_observations[0]
-    done = env_info.local_done[0] # Not really relevant in this experiment as it runs 300 turns anyway
-
-    # Add experience to the agent's replay buffer:
-    exp = Experience(state, action, reward, next_state, done)
-    multi_agent.replay_buffer.insert_into_buffer( exp )
-
-    # If buffer is sufficiently full, let the agent learn from his experience:
-    # Move the learning procedures below!!
-    #if agent.replay_buffer.buffer_usage():
-    #    agent.learn()
-
-    score += reward
-    state = next_state
 
 
 #agent.load_weights("./checkpoints")
 
-while time < 100:
-    step()
-    
-    if time%10 == 0:
-        print("[Time: {}] Score".format(time))
-    elif time%50 == 0:
-        print("[Time: {}] Time to update the target net.".format(time))
-        print("Buffer usage: {}".format(ma.replay_buffer.buffer_usage()))
-        #agent.update_target_net()
+while ticks < 200:
+    # Select action according to policy:
+    # action = ...
+    # Select random action:
 
-    time += 1
+    while True:
+        action = multi_agent.action(state)
+
+        print('Action taken: ', action, 'Time: ', time)
+
+        # Take action and record the reward and the successive state
+        env_info = env.step(action)[brain_name]
+
+        reward = env_info.rewards[0]
+        next_state = env_info.vector_observations[0]
+        done = env_info.local_done[0] # Not really relevant in this experiment as it runs 300 turns anyway
+
+        # Add experience to the agent's replay buffer:
+        exp = Experience(state, action, reward, next_state, done)
+        multi_agent.replay_buffer.insert_into_buffer( exp )
+
+        multi_agent.learn()
+
+        score += reward
+        state = next_state
+        
+        if ticks%10 == 0:
+            print("[Time: {}] Score".format(time))
+        elif ticks%50 == 0:
+            print("[Time: {}] Time to update the target net.".format(time))
+            print("Buffer usage: {}".format(ma.replay_buffer.buffer_usage()))
+            #agent.update_target_net()
+
+    ticks += 1
+
 
 
 ####################################
