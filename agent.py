@@ -2,8 +2,10 @@ from collections import deque
 import random
 import numpy as np
 from collections import namedtuple
+import tensorflow as tf
 
-import Network
+
+import network
 
 
 class MultiAgent():
@@ -63,12 +65,9 @@ class Agent():
     def learn(self):
         # Retrieve batch of experiences from the replay buffer:
         state_batch, action_batch, reward_batch, next_state_batch, done_batch = self.replay_buffer.sample_from_buffer()
-        # Prepare the target. Note that Q_target[:,action] will need to be assigned the 'true' learning target.
-        Q_target = self.local_net.predict( state_batch )
-        Q_next_state = np.max( self.target_net.predict(next_state_batch), axis=1 )
-
 
         # Batches need to be prepared before learning
+        """
         for index in range(number_agents):    
             # Calculate the next q-value according to SARSA-MAX   
             # Q_new w.r.t. action:
@@ -76,13 +75,28 @@ class Agent():
                 Q_target_batch = reward_batch + self.gamma * Q_next_state_batch
             else:
                 Q_target_batch = reward_batch
+        """
 
-            # Update actor:
-            #self.actor_local.fit(, None, batch_size=self.batch_size, epochs=1, shuffle=Flase, verbose=1)
+        # Update critic:
+        with tf.GradientTape as tape:
+            target_actions = self.target_net(next_state_batch, training=True)
+            y = reward_batch + gamma * target_critic([next_state_batch, target_actions], training = True)
+            critic_value = critic_model([state_batch, action_batch], training=True)
+            critic_loss = tf.math.reduce_mean(tf.math.square(y-critic_value))
 
-            # Update critic:
-            #self.critic_local.fit(X_np, Q_target_batch, batch_size=self.batch_size, epochs=1, shuffle=False, verbose=1)
-        
+        critic_grad = tape.gradient(critic_loss, critic_model.trainable_variables)
+        critic_optimizer.apply_gradients( zip(critic_grad, critic_model.trainable_variables) )
+
+
+        # Update actor:
+        with tf.GradientTape as tape:
+            actions = actor_model(state_batch, training=True)
+            critic_value = critic_model([state_batch, action_batch], training=True)
+            actor_loss = -tf.math.reduce_mean(critic_value)
+
+        actor_grad = tape.gradient(actor_loss, actor_model.trainable_variables)
+        actor_optimizer.apply_gradients( zip(actor_grad, actor_model.trainable_variables) )
+
         # Soft updates of target nets:
         self.update_target_nets()
 
@@ -100,14 +114,20 @@ class Agent():
         self.critic_target.set_weights( tau*critic_weights_local + (1-tau)*critic_weights_target )
 
     # Take action according to epsilon-greedy-policy:
-    def action(self, state, epsilon=0.9):
-        # Dummy action
-        action_size = 2
-        action = 2 * np.random.random_sample(action_size) - 1.0
+    def action(self, state, epsilon=0.01):
+
+        if random.random < epsilon:
+            action_size = 2
+            action = 2 * np.random.random_sample(action_size) - 1.0
+        else:
+            action = self.local_net.predict(state)
+            
         return action
 
     def random_action(self):
-        pass
+        action_size = 2
+        action = 2 * np.random.random_sample(action_size) - 1.0
+        return action
 
 
     def load_weights(self, path):
