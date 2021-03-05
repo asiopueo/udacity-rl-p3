@@ -1,5 +1,6 @@
 from unityagents import UnityEnvironment
 import numpy as np
+import time
 
 #################################
 #   Initialization:
@@ -33,9 +34,6 @@ state_size = states.shape[1]
 print('There are {} agents. Each observes a state with length: {}'.format(states.shape[0], state_size))
 print('The state for the first agent looks like:', states[0])
 
-# Define named tuple 'Experience'; you can use a dictionary alternatively
-Experience = namedtuple('Experience', ['state', 'action', 'reward', 'next_state', 'done'])
-
 
 # Initial values:
 state = env_info.vector_observations[0] # get the current state
@@ -46,59 +44,70 @@ time = 0
 #####################################
 #   Step-function and Main Loop:
 #####################################
-def step():
-    global score, time, state, env_info
 
-    # Select action according to policy:
-    # action = ...
-    # Select random action:
-    action = multi_agent.action(state)
 
-    print('Action taken: ', action, 'Time: ', time)
+# Initial values:
+episode = 0
+score = 0           
+tick = 0
 
-    # Take action and record the reward and the successive state
-    env_info = env.step(action)[brain_name]
+score_list = []
+score_trailing_list = deque(maxlen=10)
 
-    reward = env_info.rewards[0]
-    next_state = env_info.vector_observations[0]
-    done = env_info.local_done[0] # Not really relevant in this experiment as it runs 300 turns anyway
 
-    # Add experience to the agent's replay buffer:
-    exp = Experience(state, action, reward, next_state, done)
-    multi_agent.replay_buffer.insert_into_buffer( exp )
 
-    # If buffer is sufficiently full, let the agent learn from his experience:
-    # Move the learning procedures below!!
-    #if agent.replay_buffer.buffer_usage():
-    #    agent.learn()
-
-    score += reward
-    state = next_state
-
+#####################################
+#   Step-function and Main Loop:
+#####################################
 
 #agent.load_weights("./checkpoints")
 
-while time < 100:
-    step()
-    
-    if time%10 == 0:
-        print("[Time: {}] Score".format(time))
-    elif time%50 == 0:
-        print("[Time: {}] Time to update the target net.".format(time))
-        print("Buffer usage: {}".format(ma.replay_buffer.buffer_usage()))
-        #agent.update_target_net()
+for episode in range(0, 300):
+    ticks = 0
+    score = 0
 
-    time += 1
+    env_info = env.reset(train_mode=False)[brain_name]  # Reset the environment
+    state = env_info.vector_observations[0]             # Get the current state
+
+    start = time.time()
+    while True:
+        # Select action according to policy:
+        action = agent.action(state, eps, add_noise=True)
+
+        print('Action taken: ', action, 'Time: ', tick)
+
+        # Take action and record the reward and the successive state
+        env_info = env.step(action)[brain_name]
+        
+        reward = env_info.rewards[0]
+        next_state = env_info.vector_observations[0]
+        done = env_info.local_done[0]
+
+        score += reward
+        state = next_state
+        
+        if done is True:
+            break
+
+        ticks += 1
 
 
-####################################
-#  Debriefing:
-####################################
+    end = time.time()
 
-print("")
-print("Total score:", score)
-agent.save_weights("./checkpoints")
+    score_list.append(score)
+    score_trailing_list.append(score)
 
+    score_avg = np.mean(score_list)
+    score_trailing_avg = np.mean(score_trailing_list)
 
+    print("***********************************************")
+    print("Score of episode {}: {}".format(episode, score))
+    print("Avg. score: {:.2f}".format(score_avg))
+    print("Trailing avg. score: {:.2f}".format(score_trailing_avg))
+    print("Greedy epsilon used: {}".format(eps))
+    print("Time consumed: {:.2f} s".format(end-start))
+    print("***********************************************")
 
+    episode += 1
 
+env.close()
