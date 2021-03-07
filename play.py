@@ -1,5 +1,6 @@
 from unityagents import UnityEnvironment
 import numpy as np
+import time
 
 #################################
 #  Initialization:
@@ -97,3 +98,4 @@ for episode in range(0, 300):
 
 env.close()
 
+env.close()

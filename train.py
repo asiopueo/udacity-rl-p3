@@ -2,12 +2,10 @@ from unityagents import UnityEnvironment
 import numpy as np
 import time
 
-
-
 #################################
-#  Initialization:
+#   Initialization:
 #################################
-env = UnityEnvironment(file_name="./Reacher_Linux_1/Reacher.x86_64")
+env = UnityEnvironment(file_name="./Tennis_Linux/Tennis.x86_64")
 # get the default brain
 brain_name = env.brain_names[0]
 brain = env.brains[brain_name]
