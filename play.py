@@ -5,7 +5,7 @@ import time
 #################################
 #  Initialization:
 #################################
-env = UnityEnvironment(file_name="./Reacher_Linux_1/Reacher.x86_64")
+env = UnityEnvironment(file_name="./Tennis_Linux/Tennis.x86_64")
 # get the default brain
 brain_name = env.brain_names[0]
 brain = env.brains[brain_name]
@@ -29,8 +29,9 @@ print('Size of each action:', action_size)
 Experience = namedtuple('Experience', ['state', 'action', 'reward', 'next_state', 'done'])
 
 # Initialize the agent:
-from agent_torch import Agent
-agent = Agent(buffer_size=10000, batch_size=64, gamma=0.98, epsilon=0.01, action_size=4)
+from agent_torch import MultiAgent
+state_size = 8
+multi_agent = MultiAgent(state_size, action_size, buffer_size=10000, batch_size=64, gamma=0.98)
 
 
 
@@ -60,8 +61,8 @@ for episode in range(0, 300):
     start = time.time()
     while True:
         # Select action according to policy:
-        action = agent.action(state, eps)
-        action = agent.random_action()
+        #action = multi_agent.action(state, eps)
+        action = multi_agent.random_action()
 
         # Take action and record the reward and the successive state
         env_info = env.step(action)[brain_name]
