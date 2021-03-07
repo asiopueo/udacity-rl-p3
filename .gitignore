@@ -8,3 +8,7 @@ __pycache__/
 checkpoints/
 
 Tennis_Linux/
+
+communicator_objects/
+unityagents/
+unitytrainers/
