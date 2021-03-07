@@ -3,7 +3,7 @@ import random
 import numpy as np
 from collections import namedtuple
 
-import Network
+from networks_torch import Actor, Critic
 
 
 class MultiAgent():
@@ -52,11 +52,11 @@ class Agent():
         # Seed the random number generator
         random.seed()
         # QNetwork - We choose the simple network
-        self.actor_local = Network.network_actor()
-        self.actor_target = Network.network_actor()
+        self.actor_local = Actor()
+        self.actor_target = Actor()
 
-        self.critic_local = Network.network_critic()
-        self.critic_target = Network.network_critic()
+        self.critic_local = Critic()
+        self.critic_target = Critic()
 
 
     # Let the agent learn from experience
@@ -86,18 +86,6 @@ class Agent():
         # Soft updates of target nets:
         self.update_target_nets()
 
-    def update_target_nets(self, tau=0.01):
-        # Implement soft update for later:
-        # get_weights()[0] -- weights
-        # get weights()[1] -- bias (if existent)
-        # Soft-update:
-        actor_weights_local = np.array( self.actor_local.get_weights() )
-        actor_weights_target = np.array( self.actor_target.get_weights() )
-        self.actor_target.set_weights( tau*actor_weights_local + (1-tau)*actor_weights_target )
-
-        critic_weights_local = np.array( self.critic_local.get_weights() )
-        critic_weights_target = np.array( self.critic_target.get_weights() )
-        self.critic_target.set_weights( tau*critic_weights_local + (1-tau)*critic_weights_target )
 
     # Take action according to epsilon-greedy-policy:
     def action(self, state, epsilon=0.9):
@@ -109,24 +97,35 @@ class Agent():
     def random_action(self):
         pass
 
-    # WARNING: Should each agent have its own, individual network?
+    # Copy weights from short-term model to long-term model
+    def soft_update_target_nets(self, tau=0.001):
+        for t, l in zip(self.actor_target.parameters(), self.actor_local.parameters() ):
+            t.data.copy_( (1-tau)*t.data + tau*l.data )
+
+        for t, l in zip(self.critic_target.parameters(), self.critic_local.parameters() ):
+            t.data.copy_( (1-tau)*t.data + tau*l.data )
+
+
     def load_weights(self, path):
-        filepath = os.path.join(path, "actor_weights_latest.ckpt")
+        filepath = os.path.join(path, "actor_weights_latest.pth")
         print("Loading actor network weights from", filepath)
-        self.actor_local_net.load_weights(filepath)
-        self.actor_target_net.load_weights(filepath)
-        filepath = os.path.join(path, "critic_weights_latest.ckpt")
+        self.actor_local.load_state_dict(torch.load(filepath, map_location=lambda storage, loc: storage))
+
+        filepath = os.path.join(path, "critic_weights_latest.pth")
         print("Loading critic network weights from", filepath)
-        self.critic_local_net.load_weights(filepath)
-        self.critic_target_net.load_weights(filepath)
+        self.critic_local.load_state_dict(torch.load(filepath, map_location=lambda storage, loc: storage))
+        
+        self.hard_update_target_nets()
+
 
     def save_weights(self, path):
-        filepath = os.path.join(path, "actor_weights_latest.ckpt")
+        filepath = os.path.join(path, "actor_weights_latest.pth")
         print("Saving actor network weights to", filepath)
-        self.target_net.save_weights(filepath)
-        filepath = os.path.join(path, "critic_weights_latest.ckpt")
+        torch.save(self.actor_net.state_dict(), filepath) 
+        filepath = os.path.join(path, "critic_weights_latest.pth")
         print("Saving critic network weights to", filepath)
-        self.target_net.save_weights(filepath)  
+        torch.save(self.critic_net.state_dict(), filepath) 
+
 
  
 
