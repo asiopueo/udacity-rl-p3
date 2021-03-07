@@ -2,103 +2,98 @@ from unityagents import UnityEnvironment
 import numpy as np
 
 #################################
-#   Initialization:
+#  Initialization:
 #################################
-env = UnityEnvironment(file_name="./Tennis_Linux/Tennis.x86_64")
+env = UnityEnvironment(file_name="./Reacher_Linux_1/Reacher.x86_64")
 # get the default brain
 brain_name = env.brain_names[0]
 brain = env.brains[brain_name]
 
-
-from Agent import MultiAgent
-from collections import namedtuple
-
-# Initialize the agent:
-multi_agent = MultiAgent(buffer_size=1000, batch_size=20, gamma=0.98)
+#from agent import Agent
+from collections import namedtuple, deque
+import time
 
 # Reset the environment
-env_info = env.reset(train_mode=True)[brain_name]
+env_info = env.reset(train_mode=False)[brain_name]
 
-# Number of agents 
+# number of agents
 num_agents = len(env_info.agents)
 print('Number of agents:', num_agents)
 
-# Size of each action
+# size of each action
 action_size = brain.vector_action_space_size
 print('Size of each action:', action_size)
-
-# Examine the state space 
-states = env_info.vector_observations
-state_size = states.shape[1]
-print('There are {} agents. Each observes a state with length: {}'.format(states.shape[0], state_size))
-print('The state for the first agent looks like:', states[0])
 
 # Define named tuple 'Experience'; you can use a dictionary alternatively
 Experience = namedtuple('Experience', ['state', 'action', 'reward', 'next_state', 'done'])
 
+# Initialize the agent:
+from agent_torch import Agent
+agent = Agent(buffer_size=10000, batch_size=64, gamma=0.98, epsilon=0.01, action_size=4)
+
+
+
+####################################
+#  Main learning loop:
+####################################
 
 # Initial values:
-state = env_info.vector_observations[0] # get the current state
-score = 0                               # Score is NOT the discounted reward but the final 'Banana Score' of the game
-time = 0
 
+episode = 0
+score = 0           
+tick = 0
 
-#####################################
-#   Step-function and Main Loop:
-#####################################
-def step():
-    global score, time, state, env_info
-
-    # Select action according to policy:
-    # action = ...
-    # Select random action:
-    action = multi_agent.action(state)
-
-    print('Action taken: ', action, 'Time: ', time)
-
-    # Take action and record the reward and the successive state
-    env_info = env.step(action)[brain_name]
-
-    reward = env_info.rewards[0]
-    next_state = env_info.vector_observations[0]
-    done = env_info.local_done[0] # Not really relevant in this experiment as it runs 300 turns anyway
-
-    # Add experience to the agent's replay buffer:
-    exp = Experience(state, action, reward, next_state, done)
-    multi_agent.replay_buffer.insert_into_buffer( exp )
-
-    # If buffer is sufficiently full, let the agent learn from his experience:
-    # Move the learning procedures below!!
-    #if agent.replay_buffer.buffer_usage():
-    #    agent.learn()
-
-    score += reward
-    state = next_state
+score_list = []
+score_trailing_list = deque(maxlen=100)
 
 
 #agent.load_weights("./checkpoints")
 
-while time < 100:
-    step()
-    
-    if time%10 == 0:
-        print("[Time: {}] Score".format(time))
-    elif time%50 == 0:
-        print("[Time: {}] Time to update the target net.".format(time))
-        print("Buffer usage: {}".format(ma.replay_buffer.buffer_usage()))
-        #agent.update_target_net()
+for episode in range(0, 300):
+    ticks = 0
+    score = 0
 
-    time += 1
+    env_info = env.reset(train_mode=False)[brain_name]  # Reset the environment
+    state = env_info.vector_observations[0]             # Get the current state
+
+    start = time.time()
+    while True:
+        # Select action according to policy:
+        action = agent.action(state, eps)
+        action = agent.random_action()
+
+        # Take action and record the reward and the successive state
+        env_info = env.step(action)[brain_name]
+        
+        reward = env_info.rewards[0]
+        next_state = env_info.vector_observations[0]
+        done = env_info.local_done[0]
+
+        score += reward
+        state = next_state
+        
+        if done is True:
+            break
+
+        ticks += 1
 
 
-####################################
-#  Debriefing:
-####################################
+    end = time.time()
 
-print("")
-print("Total score:", score)
-agent.save_weights("./checkpoints")
+    score_list.append(score)
+    score_trailing_list.append(score)
 
+    score_avg = np.mean(score_list)
+    score_trailing_avg = np.mean(score_trailing_list)
 
+    print("***********************************************")
+    print("Score of episode {}: {}".format(episode, score))
+    print("Avg. score: {:.2f}".format(score_avg))
+    print("Trailing avg. score: {:.2f}".format(score_trailing_avg))
+    print("Time consumed: {:.2f} s".format(end-start))
+    print("***********************************************")
 
+    episode += 1
+
+env.close()
 
