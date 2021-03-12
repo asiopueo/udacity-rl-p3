@@ -59,7 +59,9 @@ class MultiAgent():
         for agent in self.agents:
             agent.load_weights()
     
-
+    def reset():
+        for agent in agents:
+            agent.reset()
 
 
 class Agent():
@@ -183,6 +185,8 @@ class Agent():
         torch.save(self.critic_net.state_dict(), filepath) 
 
 
+    def reset():
+        self.noise.reset()
  
 
 
