@@ -29,7 +29,7 @@ Experience = namedtuple('Experience', ['state', 'action', 'reward', 'next_state'
 
 # Initialize the agent:
 from agent_torch import Agent
-agent = Agent(buffer_size=10000, batch_size=64, gamma=0.98, epsilon=0.1, action_size=4)
+multi_agent = MultiAgent(state_size=, action_size=, buffer_size=10000, batch_size=64, gamma=0.98)
 
 
 
@@ -43,66 +43,57 @@ def training(n_episodes=300):
     tick = 0
 
     score_list = []
-    score_trailing_list = deque(maxlen=10)
-
-    eps = 1.0
-    eps_rate = 0.995
-    eps_end = 0.02
-
+    score_queue = deque(maxlen=100)
+    score_trailing_avg_list = []
 
     #agent.load_weights("./checkpoints")
 
     for episode in range(0, n_episodes):
         ticks = 0
-        score = 0
+        scores = np.zeros(num_agents)
 
-        env_info = env.reset(train_mode=True)[brain_name]  # Reset the environment
-        state = env_info.vector_observations[0]             # Get the current state
+        env_info = env.reset(train_mode=True)[brain_name]   # Reset the environment
+        state = env_info.vector_observations                # Get the current state
+
+        multi_agent.reset() # Reset the noise process
 
         start = time.time()
         while True:
             # Select action according to policy:
-            action = agent.action(state, eps, add_noise=True)
-
-            print('Action taken: ', action, 'Time: ', tick)
-
-            # Take action and record the reward and the successive state
+            actions = multi_agent.action(state, )
             env_info = env.step(action)[brain_name]
             
-            reward = env_info.rewards[0]
-            next_state = env_info.vector_observations[0]
-            done = env_info.local_done[0]
+            rewards = env_info.rewards
+            next_states = env_info.vector_observations
+            dones = env_info.local_done
 
             # Add experience to the agent's replay buffer:
-            exp = Experience(state, action, reward, next_state, done)
-            agent.replay_buffer.insert_into_buffer( exp )
+            exp = Experience(states, actions, rewards, next_states, dones)
+            multi_agent.replay_buffer.insert_into_buffer( exp )
             
             agent.learn()
 
-            score += reward
-            state = next_state
+            scores += rewards
+            states = next_states
             
-            eps = max( eps_rate*eps, eps_end )
-
-            if done is True:
+            if np.any(dones) is True:
                 break
 
             ticks += 1
 
-
         end = time.time()
 
-        score_list.append(score)
-        score_trailing_list.append(score)
+        # Only the agent with the max score counts per episode:
+        score_max = np.max(scores)
+        score_list.append(score_max)
+        score_queue.append(score_max)
 
-        score_avg = np.mean(score_list)
-        score_trailing_avg = np.mean(score_trailing_list)
+        score_trailing_avg = np.mean(score_queue)
+        score_trailing_avg_list.append(score_trailing_avg)
 
         print("***********************************************")
-        print("Score of episode {}: {}".format(episode, score))
-        print("Avg. score: {:.2f}".format(score_avg))
+        print("Maximum score of episode {}: {}".format(episode, score_max))
         print("Trailing avg. score: {:.2f}".format(score_trailing_avg))
-        print("Greedy epsilon used: {}".format(eps))
         print("Time consumed: {:.2f} s".format(end-start))
         print("***********************************************")
 
@@ -112,8 +103,10 @@ def training(n_episodes=300):
 
         episode += 1
 
+    return score_list, score_trailing_avg_list
 
-training()
+
+training(30)
 
 
 
