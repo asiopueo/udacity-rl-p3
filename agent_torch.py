@@ -7,6 +7,9 @@ from networks_torch import Actor, Critic
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+EPISODES_BEFORE_TRAINING = 3
+
+
 class MultiAgent():
     """
         Multi-Agent DDPG according to
@@ -195,7 +198,6 @@ class Agent():
 
         for t, l in zip(self.critic_target.parameters(), self.critic_local.parameters() ):
             t.data.copy_( (1-tau)*t.data + tau*l.data )
-
 
     def reset():
         self.noise.reset()
