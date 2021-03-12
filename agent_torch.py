@@ -1,8 +1,10 @@
 import numpy as np
 from collections import namedtuple, deque
 import random
-
 from networks_torch import Actor, Critic
+
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class MultiAgent():
@@ -15,12 +17,15 @@ class MultiAgent():
         self.agents.append( Agent(state_size=state_size, action_size=action_size, buffer_size=buffer_size, batch_size=batch_size, gamma=gamma) )
         self.num_agents = len(self.agents)
 
-    def action(self, state):
-        action = []
-        for agent in self.agents:
-            action.append( agent.action(state) )
+    def action(self, state, add_noise=True):
+        actions = []
+        for agent_id, agent in enumerate(self.agents):
+            action = agent.act(np.reshape(full_states[agent_id,:], newshape=(1,-1)), i_episode, add_noise)
+            action = np.reshape(action, newshape=(1,-1))            
+            actions.append(action)
 
-        return action
+        actions = np.concatenate(actions, axis=0)
+        return actions
 
     def random_action(self):
         action_size = 4
@@ -91,7 +96,6 @@ class Agent():
 
     # Let the agent learn from experience
     def learn(self):
-
         # If buffer is sufficiently full, let the agent learn from his experience:
         if not agent.replay_buffer.buffer_usage():
             return
@@ -140,13 +144,25 @@ class Agent():
 
 
     # Take action according to epsilon-greedy-policy:
-    def action(self, state, epsilon=0.01):
+    def action(self, state, add_noise=True):
+        if i_episode > EPISODES_BEFORE_TRAINING and self.noise_scale > NOISE_END:
+            #self.noise_scale *= NOISE_REDUCTION
+            self.noise_scale = NOISE_REDUCTION**(i_episode-EPISODES_BEFORE_TRAINING)
 
-        if random.random < epsilon:
-            action_size = 2
-            action = 2 * np.random.random_sample(action_size) - 1.0
-        else:
-            action = self.local_net.predict(state)
+        if not add_noise:
+            self.noise_scale = 0.0
+                                    
+        states = torch.from_numpy(states).float().to(DEVICE)
+        self.actor_local.eval()
+        with torch.no_grad():
+            actions = self.actor_local(states).cpu().data.numpy()
+        self.actor_local.train()
+        
+        # Add noise
+        actions += self.noise_scale*self.add_noise2() #works much better than OU Noise process
+        #actions += self.noise_scale*self.noise.sample()
+        
+        return np.clip(actions, -1, 1)
             
         return action
 
