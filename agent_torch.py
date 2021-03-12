@@ -181,24 +181,26 @@ class Agent():
 
 
     def load_weights(self, path):
-        filepath = os.path.join(path, "actor_weights_latest.pth")
-        print("Loading actor network weights from", filepath)
-        self.actor_local.load_state_dict(torch.load(filepath, map_location=lambda storage, loc: storage))
+        for id, _ in enumerate(self.agents):
+            filepath = os.path.join(path, "actor_weights_latest" + str(id) + ".pth")
+            print("Loading actor network weights from", filepath)
+            self.actor_local.load_state_dict(torch.load(filepath, map_location=lambda storage, loc: storage))
 
-        filepath = os.path.join(path, "critic_weights_latest.pth")
-        print("Loading critic network weights from", filepath)
-        self.critic_local.load_state_dict(torch.load(filepath, map_location=lambda storage, loc: storage))
-        
-        self.hard_update_target_nets()
+            filepath = os.path.join(path, "critic_weights_latest" + str(id) + ".pth")
+            print("Loading critic network weights from", filepath)
+            self.critic_local.load_state_dict(torch.load(filepath, map_location=lambda storage, loc: storage))
+            
+            self.hard_update_target_nets()
 
 
     def save_weights(self, path):
-        filepath = os.path.join(path, "actor_weights_latest.pth")
-        print("Saving actor network weights to", filepath)
-        torch.save(self.actor_net.state_dict(), filepath) 
-        filepath = os.path.join(path, "critic_weights_latest.pth")
-        print("Saving critic network weights to", filepath)
-        torch.save(self.critic_net.state_dict(), filepath) 
+        for id, _ in enumerate(self.agents):
+            filepath = os.path.join(path, "actor_weights_latest" + str(id) + ".pth")
+            print("Saving actor network weights to", filepath)
+            torch.save(self.actor_net.state_dict(), filepath) 
+            filepath = os.path.join(path, "critic_weights_latest" + str(id) + ".pth")
+            print("Saving critic network weights to", filepath)
+            torch.save(self.critic_net.state_dict(), filepath) 
 
 
     def reset():
