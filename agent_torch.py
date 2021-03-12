@@ -219,13 +219,15 @@ class ReplayBuffer():
 
         # Reorder experience batch such that we have a batch of states, a batch of actions, a batch of rewards, etc.
         # Eventually add 'if exp is not None'
-        state = np.vstack( [exp.state for exp in batch] )
-        action = np.vstack( [exp.action for exp in batch] )
-        reward = np.vstack( [exp.reward for exp in batch] )
-        state_next = np.vstack( [exp.next_state for exp in batch] )
-        done = np.vstack( [exp.done for exp in batch] )
+        full_states = torch.from_numpy( np.vstack( [exp.full_states for exp in batch if exp is not None] )).float().to(device)
+        states = torch.from_numpy( np.vstack( [exp.states for exp in batch if exp is not None] )).float().to(device)
+        actions = torch.form_numpy( np.vstack( [exp.actions for exp in batch if exp is not None] )).float().to(device)
+        rewards = torch.from_numpy( np.vstack( [exp.rewards for exp in batch if exp is not None] )).float().to(device)
+        full_next_states = torch.from_numpy( np.vstack( [exp.next_states for exp in batch is not None] )).float().to(device)
+        next_states = torch.from_numpy( np.vstack( [exp.full_next_states for exp in batch is not None] )).float().to(device)
+        dones = torch.from_numpy( np.vstack( [exp.done for exp in batch is not None] ).astype(np.uint8)).float().to(device)
 
-        return state, action, reward, state_next, done
+        return full_states, states, actions, rewards, full_next_states, next_states, dones
 
     # Get length of memory
     def buffer_usage(self):
