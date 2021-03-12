@@ -60,9 +60,26 @@ class MultiAgent():
         for agent in self.agents:
             agent.update_target_nets()
 
-    def load_weights(self):
-        for agent in self.agents:
-            agent.load_weights()
+    def load_weights(self, path):
+        for id, agent in enumerate(self.agents):
+            filepath = os.path.join(path, "actor_weights_latest_" + str(id) + ".pth")
+            print("Loading actor network weights from", filepath)
+            agent.load_state_dict(torch.load(filepath, map_location=lambda storage, loc: storage))
+
+            filepath = os.path.join(path, "critic_weights_latest_" + str(id) + ".pth")
+            print("Loading critic network weights from", filepath)
+            agent.load_state_dict(torch.load(filepath, map_location=lambda storage, loc: storage))
+            
+            self.hard_update_target_nets()
+
+    def save_weights(self, path):
+        for id, agent in enumerate(self.agents):
+            filepath = os.path.join(path, "actor_weights_latest_" + str(id) + ".pth")
+            print("Saving actor network weights to", filepath)
+            torch.save(agent.actor_net.state_dict(), filepath) 
+            filepath = os.path.join(path, "critic_weights_latest_" + str(id) + ".pth")
+            print("Saving critic network weights to", filepath)
+            torch.save(agent.critic_net.state_dict(), filepath)
     
     def reset():
         for agent in agents:
@@ -178,29 +195,6 @@ class Agent():
 
         for t, l in zip(self.critic_target.parameters(), self.critic_local.parameters() ):
             t.data.copy_( (1-tau)*t.data + tau*l.data )
-
-
-    def load_weights(self, path):
-        for id, _ in enumerate(self.agents):
-            filepath = os.path.join(path, "actor_weights_latest" + str(id) + ".pth")
-            print("Loading actor network weights from", filepath)
-            self.actor_local.load_state_dict(torch.load(filepath, map_location=lambda storage, loc: storage))
-
-            filepath = os.path.join(path, "critic_weights_latest" + str(id) + ".pth")
-            print("Loading critic network weights from", filepath)
-            self.critic_local.load_state_dict(torch.load(filepath, map_location=lambda storage, loc: storage))
-            
-            self.hard_update_target_nets()
-
-
-    def save_weights(self, path):
-        for id, _ in enumerate(self.agents):
-            filepath = os.path.join(path, "actor_weights_latest" + str(id) + ".pth")
-            print("Saving actor network weights to", filepath)
-            torch.save(self.actor_net.state_dict(), filepath) 
-            filepath = os.path.join(path, "critic_weights_latest" + str(id) + ".pth")
-            print("Saving critic network weights to", filepath)
-            torch.save(self.critic_net.state_dict(), filepath) 
 
 
     def reset():
