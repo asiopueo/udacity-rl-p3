@@ -20,14 +20,12 @@ env_info = env.reset(train_mode=False)[brain_name]
 num_agents = len(env_info.agents)
 print('Number of agents:', num_agents)
 
-state_size = env_info.vector_observations.shape[0]
+state_size = env_info.vector_observations.shape[1]
+print('Size of each state:', state_size)
 
 # size of each action
 action_size = brain.vector_action_space_size
 print('Size of each action:', action_size)
-
-# Define named tuple 'Experience'; you can use a dictionary alternatively
-Experience = namedtuple('Experience', ['state', 'action', 'reward', 'next_state', 'done'])
 
 # Initialize the agent:
 from agent_torch import MultiAgent
@@ -55,14 +53,14 @@ def training(n_episodes=300):
         scores = np.zeros(num_agents)
 
         env_info = env.reset(train_mode=True)[brain_name]   # Reset the environment
-        state = env_info.vector_observations                # Get the current state
+        states = env_info.vector_observations                # Get the current state
 
         multi_agent.reset() # Reset the noise process
 
         start = time.time()
         while True:
             # Select action according to policy:
-            actions = multi_agent.action(state, )
+            actions = multi_agent.action(states, episode)
             env_info = env.step(action)[brain_name]
             
             rewards = env_info.rewards
@@ -70,8 +68,7 @@ def training(n_episodes=300):
             dones = env_info.local_done
 
             # Add experience to the agent's replay buffer:
-            exp = Experience(states, actions, rewards, next_states, dones)
-            multi_agent.replay_buffer.insert_into_buffer( exp )
+            multi_agent.replay_buffer.insert_into_buffer( states, actions, rewards, next_states, dones )
             
             agent.learn()
 
