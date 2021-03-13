@@ -32,7 +32,7 @@ from agent_torch import MultiAgent
 multi_agent = MultiAgent(state_size=state_size, action_size=action_size, buffer_size=10000, batch_size=64, gamma=0.98)
 
 
-
+EPISODES_BEFORE_TRAINING = 5
 
 ####################################
 #  Main learning loop:
@@ -70,7 +70,8 @@ def training(n_episodes=300):
             # Add experience to the agent's replay buffer:
             multi_agent.replay_buffer.insert_into_buffer( states, actions, rewards, next_states, dones )
             
-            multi_agent.learn()
+            if episode > EPISODES_BEFORE_TRAINING:
+                multi_agent.learn()
 
             scores += rewards
             states = next_states

@@ -8,7 +8,7 @@ from networks_torch import Actor, Critic
 
 
 # Define named tuple 'Experience'; you can use a dictionary alternatively
-Experience = namedtuple('Experience', ['full_states', 'states', 'action', 'reward', 'full_next_states', 'next_states', 'done'])
+Experience = namedtuple('Experience', ['full_state', 'state', 'action', 'reward', 'full_next_state', 'next_state', 'done'])
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -236,12 +236,12 @@ class ReplayBuffer():
 
         # Reorder experience batch such that we have a batch of states, a batch of actions, a batch of rewards, etc.
         # Eventually add 'if exp is not None'
-        full_states = torch.from_numpy( np.vstack( [exp.full_states for exp in batch if exp is not None] )).float().to(device)
-        states = torch.from_numpy( np.vstack( [exp.states for exp in batch if exp is not None] )).float().to(device)
-        actions = torch.form_numpy( np.vstack( [exp.actions for exp in batch if exp is not None] )).float().to(device)
-        rewards = torch.from_numpy( np.vstack( [exp.rewards for exp in batch if exp is not None] )).float().to(device)
-        full_next_states = torch.from_numpy( np.vstack( [exp.next_states for exp in batch is not None] )).float().to(device)
-        next_states = torch.from_numpy( np.vstack( [exp.full_next_states for exp in batch is not None] )).float().to(device)
+        full_states = torch.from_numpy( np.vstack( [exp.full_state for exp in batch if exp is not None] )).float().to(device)
+        states = torch.from_numpy( np.vstack( [exp.state for exp in batch if exp is not None] )).float().to(device)
+        actions = torch.from_numpy( np.vstack( [exp.action for exp in batch if exp is not None] )).float().to(device)
+        rewards = torch.from_numpy( np.vstack( [exp.reward for exp in batch if exp is not None] )).float().to(device)
+        full_next_states = torch.from_numpy( np.vstack( [exp.full_next_state for exp in batch is not None] )).float().to(device)
+        next_states = torch.from_numpy( np.vstack( [exp.next_state for exp in batch is not None] )).float().to(device)
         dones = torch.from_numpy( np.vstack( [exp.done for exp in batch is not None] ).astype(np.uint8)).float().to(device)
 
         return full_states, states, actions, rewards, full_next_states, next_states, dones
