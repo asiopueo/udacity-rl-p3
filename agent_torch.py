@@ -35,6 +35,7 @@ class MultiAgent():
     def action(self, states, episode, add_noise=True):
         actions = []
         for agent_id, agent in enumerate(self.agents):
+            #action = agent.action(states[agent_id,:], episode, add_noise) # Wrong shape before stacking the individual actions
             action = agent.action(np.reshape(states[agent_id,:], newshape=(1,-1)), episode, add_noise)
             action = np.reshape(action, newshape=(1,-1))            
             actions.append(action)
@@ -109,6 +110,9 @@ class Agent():
         if not batch_size < buffer_size:
             raise Exception()
 
+        self.state_size = state_size
+        self.action_size = action_size
+
         self.buffer_size = buffer_size
         self.batch_size = batch_size
         self.gamma = gamma
@@ -137,11 +141,17 @@ class Agent():
                                     
         state = torch.from_numpy(state).float().to(device)
         self.actor_local.eval()
+
+
         with torch.no_grad():
             action = self.actor_local(state).cpu().data.numpy()
         self.actor_local.train()
         
         # Add noise
+
+        print(action.shape)
+        print(self.add_noise2().shape)
+
         action += self.noise_scale*self.add_noise2() #works much better than OU Noise process
         #actions += self.noise_scale*self.noise.sample()
         return np.clip(action, -1, 1)
@@ -209,6 +219,10 @@ class Agent():
     def hard_update_nets(self):
         self.soft_update_target_nets(tau=1.0)
 
+
+    def add_noise2(self):
+        noise = 0.5*np.random.randn(1, self.action_size) #sigma of 0.5 as sigma of 1 will have alot of actions just clipped
+        return noise
 
     def reset(self):
         self.noise.reset()
