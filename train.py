@@ -52,7 +52,7 @@ def training(n_episodes=300):
         ticks = 0
         scores = np.zeros(num_agents)
 
-        env_info = env.reset(train_mode=True)[brain_name]   # Reset the environment
+        env_info = env.reset(train_mode=False)[brain_name]   # Reset the environment
         states = env_info.vector_observations                # Get the current state
 
         multi_agent.reset() # Reset the noise process
@@ -61,7 +61,7 @@ def training(n_episodes=300):
         while True:
             # Select action according to policy:
             actions = multi_agent.action(states, episode)
-            env_info = env.step(action)[brain_name]
+            env_info = env.step(actions)[brain_name]
             
             rewards = env_info.rewards
             next_states = env_info.vector_observations
@@ -70,7 +70,7 @@ def training(n_episodes=300):
             # Add experience to the agent's replay buffer:
             multi_agent.replay_buffer.insert_into_buffer( states, actions, rewards, next_states, dones )
             
-            agent.learn()
+            multi_agent.learn()
 
             scores += rewards
             states = next_states
