@@ -21,6 +21,9 @@ class MultiAgent():
         Multi-Agent DDPG according to
     """
     def __init__(self, state_size, action_size, buffer_size, batch_size, gamma):
+
+        self.gamma = gamma
+
         random.seed()
         np.random.seed()
 
@@ -48,30 +51,38 @@ class MultiAgent():
         action = 2 * np.random.random_sample(action_size) - 1.0
         return action
 
-    def learn(self, samples, agent_no, gamma):
-        #for learning MADDPG
-        full_states, states, actions, rewards, full_next_states, next_states, dones = samples
-        
+    # Prepares batches before actual learning is done by the agents
+    def learn(self):
+        # If buffer is sufficiently full, let the agent learn from his experience:
+        if not self.replay_buffer.buffer_usage():
+            return
+
+        full_states, states, actions, rewards, full_next_states, next_states, dones = self.replay_buffer.sample_from_buffer()
+                 
         critic_full_next_actions = torch.zeros(states.shape[:2] + (self.action_size,), dtype=torch.float, device=DEVICE)
-        for agent_id, agent in enumerate(self.maddpg_agents):
-            agent_next_state = next_states[:,agent_id,:]
-            critic_full_next_actions[:,agent_id,:] = agent.actor_target.forward(agent_next_state)
-        critic_full_next_actions = critic_full_next_actions.view(-1, self.whole_action_dim)
+
+        for agent_idx, agent in enumerate(self.maddpg_agents):
+            agent_next_state = next_states[:,agent_idx,:]
+            critic_full_next_actions[:,agent_idx,:] = agent.actor_target.forward(agent_next_state)
+            critic_full_next_actions = critic_full_next_actions.view(-1, self.whole_action_dim)
         
-        agent = self.maddpg_agents[agent_no]
-        agent_state = states[:,agent_no,:]
-        actor_full_actions = actions.clone() #create a deep copy
-        actor_full_actions[:,agent_no,:] = agent.actor_local.forward(agent_state)
-        actor_full_actions = actor_full_actions.view(-1, self.whole_action_dim)
-                
-        full_actions = actions.view(-1,self.whole_action_dim)
+            #agent = self.maddpg_agents[agent_no]
+            agent_state = states[:, agent_idx,:]
+            actor_full_actions = actions.clone() # deep copy
+            actor_full_actions[:, agent_idx,:] = agent.actor_local.forward(agent_state)
+            actor_full_actions = actor_full_actions.view(-1, self.whole_action_dim)
+                    
+            full_actions = actions.view(-1, self.whole_action_dim)
+            
+            agent_rewards = rewards[:,agent_idx].view(-1,1) # Wrong result without doing this
+            agent_dones = dones[:,agent_idx].view(-1,1)     # Wrong result without doing this
+
+            agent_exp = (full_states, full_actions, agent_rewards, full_next_states,  agent_dones, actor_full_actions, critic_full_next_actions)
+            
+            agent.learn( agent_exp )
         
-        agent_rewards = rewards[:,agent_no].view(-1,1) #gives wrong result without doing this
-        agent_dones = dones[:,agent_no].view(-1,1) #gives wrong result without doing this
-        experiences = (full_states, actor_full_actions, full_actions, agent_rewards, \
-                       agent_dones, full_next_states, critic_full_next_actions)
-        agent.learn(experiences, gamma)
-        
+
+
     def update_target_nets(self):
         for agent in self.agents:
             agent.update_target_nets()
@@ -148,12 +159,8 @@ class Agent():
         self.actor_local.train()
         
         # Add noise
-
-        print(action.shape)
-        print(self.add_noise2().shape)
-
-        action += self.noise_scale*self.add_noise2() #works much better than OU Noise process
         #actions += self.noise_scale*self.noise.sample()
+        action += self.noise_scale*self.add_noise2() #works much better than OU Noise process
         return np.clip(action, -1, 1)
 
 
@@ -164,28 +171,9 @@ class Agent():
 
 
     # Let the agent learn from experience
-    def learn(self):
-        # If buffer is sufficiently full, let the agent learn from his experience:
-        if not agent.replay_buffer.buffer_usage():
-            return
-
-        # Retrieve batch of experiences from the replay buffer:
-        state_batch, action_batch, reward_batch, next_state_batch, done_batch = self.replay_buffer.sample_from_buffer()
-
-        # Batches need to be prepared before learning
-        """
-        for index in range(number_agents):    
-            # Calculate the next q-value according to SARSA-MAX   
-            # Q_new w.r.t. action:
-            if not done_batch[index]:
-                Q_target_batch = reward_batch + self.gamma * Q_next_state_batch
-            else:
-                Q_target_batch = reward_batch
-        """
-
-        full_states, actor_full_actions, full_actions, agent_rewards, agent_dones, full_next_states, critic_full_next_actions = experiences
+    def learn(self, experiences):
+        full_states, full_actions, agent_rewards, full_next_states, agent_dones, actor_full_actions, critic_full_next_actions = experiences
         
-        # ---------------------------- update critic ---------------------------- #
         # Get Q values from target models
         Q_target_next = self.critic_target(full_next_states, critic_full_next_actions)
         # Compute Q targets for current states (y_i)
@@ -199,10 +187,7 @@ class Agent():
         #torch.nn.utils.clip_grad_norm(self.critic_local.parameters(), 1.0) #clip the gradient for the critic network (Udacity hint)
         self.critic_optimizer.step()
         
-        # ---------------------------- update actor ---------------------------- #
-        # Compute actor loss
         actor_loss = -self.critic_local.forward(full_states, actor_full_actions).mean() #-ve b'cse we want to do gradient ascent
-        # Minimize the loss
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step() 
@@ -237,8 +222,8 @@ class ReplayBuffer():
 
     # Insert experience into memory
     def insert_into_buffer(self, state, action, reward, next_state, done):        
-        full_state = np.flatten(state)
-        full_next_state = np.flatten(next_state)
+        full_state = state.flatten()
+        full_next_state = next_state.flatten()
 
         exp = Experience(full_state, state, action, reward, full_next_state, next_state, done)
 
