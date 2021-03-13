@@ -20,6 +20,8 @@ env_info = env.reset(train_mode=False)[brain_name]
 num_agents = len(env_info.agents)
 print('Number of agents:', num_agents)
 
+state_size = env_info.vector_observations.shape[0]
+
 # size of each action
 action_size = brain.vector_action_space_size
 print('Size of each action:', action_size)
@@ -28,8 +30,8 @@ print('Size of each action:', action_size)
 Experience = namedtuple('Experience', ['state', 'action', 'reward', 'next_state', 'done'])
 
 # Initialize the agent:
-from agent_torch import Agent
-multi_agent = MultiAgent(state_size=, action_size=, buffer_size=10000, batch_size=64, gamma=0.98)
+from agent_torch import MultiAgent
+multi_agent = MultiAgent(state_size=state_size, action_size=action_size, buffer_size=10000, batch_size=64, gamma=0.98)
 
 
 
