@@ -117,11 +117,11 @@ class Agent():
         self.noise_scale = NOISE_START
 
         # QNetwork - We choose the simple network
-        self.actor_local = Actor(state_size, action_size)
-        self.actor_target = Actor(state_size, action_size)
+        self.actor_local = Actor(state_size, action_size).to(device)
+        self.actor_target = Actor(state_size, action_size).to(device)
 
-        self.critic_local = Critic(state_size, action_size)
-        self.critic_target = Critic(state_size, action_size)
+        self.critic_local = Critic(state_size, action_size).to(device)
+        self.critic_target = Critic(state_size, action_size).to(device)
 
         self.hard_update_nets()
 
