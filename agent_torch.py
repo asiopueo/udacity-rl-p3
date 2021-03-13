@@ -1,33 +1,41 @@
 from collections import namedtuple, deque
 import random
-
+import copy
 import numpy as np
 
 import torch
 from networks_torch import Actor, Critic
 
 
-
+# Define named tuple 'Experience'; you can use a dictionary alternatively
+Experience = namedtuple('Experience', ['full_states', 'states', 'action', 'reward', 'full_next_states', 'next_states', 'done'])
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 EPISODES_BEFORE_TRAINING = 3
+NOISE_START = 1.0
 
 class MultiAgent():
     """
         Multi-Agent DDPG according to
     """
     def __init__(self, state_size, action_size, buffer_size, batch_size, gamma):
+        random.seed()
+        np.random.seed()
+
         self.agents = []
         self.agents.append( Agent(state_size=state_size, action_size=action_size, buffer_size=buffer_size, batch_size=batch_size, gamma=gamma) )
         self.agents.append( Agent(state_size=state_size, action_size=action_size, buffer_size=buffer_size, batch_size=batch_size, gamma=gamma) )
         self.num_agents = len(self.agents)
 
-    def action(self, state, add_noise=True):
+        # Initialize replay buffer
+        self.replay_buffer = ReplayBuffer(buffer_size, batch_size)
+
+    def action(self, states, episode, add_noise=True):
         actions = []
         for agent_id, agent in enumerate(self.agents):
-            action = agent.act(np.reshape(full_states[agent_id,:], newshape=(1,-1)), i_episode, add_noise)
+            action = agent.action(np.reshape(states[agent_id,:], newshape=(1,-1)), episode, add_noise)
             action = np.reshape(action, newshape=(1,-1))            
             actions.append(action)
 
@@ -89,7 +97,7 @@ class MultiAgent():
             torch.save(agent.critic_net.state_dict(), filepath)
     
     def reset(self):
-        for agent in agents:
+        for agent in self.agents:
             agent.reset()
 
 
@@ -105,10 +113,9 @@ class Agent():
         self.batch_size = batch_size
         self.gamma = gamma
 
-        # Initialize replay buffer
-        self.replay_buffer = ReplayBuffer(buffer_size, batch_size)
-        # Seed the random number generator
-        random.seed()
+        self.noise = OUNoise(action_size)
+        self.noise_scale = NOISE_START
+
         # QNetwork - We choose the simple network
         self.actor_local = Actor(state_size, action_size)
         self.actor_target = Actor(state_size, action_size)
@@ -168,7 +175,7 @@ class Agent():
 
 
     # Take action according to epsilon-greedy-policy:
-    def action(self, state, add_noise=True):
+    def action(self, state, i_episode, add_noise=True):
         if i_episode > EPISODES_BEFORE_TRAINING and self.noise_scale > NOISE_END:
             #self.noise_scale *= NOISE_REDUCTION
             self.noise_scale = NOISE_REDUCTION**(i_episode-EPISODES_BEFORE_TRAINING)
@@ -176,19 +183,17 @@ class Agent():
         if not add_noise:
             self.noise_scale = 0.0
                                     
-        states = torch.from_numpy(states).float().to(DEVICE)
+        state = torch.from_numpy(state).float().to(device)
         self.actor_local.eval()
         with torch.no_grad():
-            actions = self.actor_local(states).cpu().data.numpy()
+            action = self.actor_local(state).cpu().data.numpy()
         self.actor_local.train()
         
         # Add noise
-        actions += self.noise_scale*self.add_noise2() #works much better than OU Noise process
+        action += self.noise_scale*self.add_noise2() #works much better than OU Noise process
         #actions += self.noise_scale*self.noise.sample()
-        
-        return np.clip(actions, -1, 1)
-            
-        return action
+        return np.clip(action, -1, 1)
+
 
     def random_action(self):
         action_size = 2
@@ -215,8 +220,13 @@ class ReplayBuffer():
         self.replay_buffer = deque(maxlen=self.buffer_size)
 
     # Insert experience into memory
-    def insert_into_buffer(self, experience):
-        self.replay_buffer.append(experience)
+    def insert_into_buffer(self, state, action, reward, next_state, done):        
+        full_state = np.flatten(state)
+        full_next_state = np.flatten(next_state)
+
+        exp = Experience(full_state, state, action, reward, full_next_state, next_state, done)
+
+        self.replay_buffer.append(exp)
 
     # Randomly sample memory
     def sample_from_buffer(self):
@@ -241,7 +251,6 @@ class ReplayBuffer():
 
 
 
-
 class Noise():
     def __init__(self):
         pass
@@ -251,3 +260,21 @@ class Noise():
         sigma = 1.0
         return np.random.random(mu, sigma)
 
+
+# Ornstein-Uhlenbeck process:
+class OUNoise():
+    def __init__(self, size, mu=0., theta=0.15, sigma=0.2):
+        self.size = size
+        self.mu = mu + np.ones(size)
+        self.sigma = sigma
+        self.theta = theta
+        self.reset()
+
+    def reset(self):
+        self.state = copy.copy(self.mu)
+
+    def sample(self):
+        x = self.state
+        dx = self.theta * (self.mu - x) + self.sigma * np.random.standard_normal(self.size)
+        self.state += dx
+        return self.state
