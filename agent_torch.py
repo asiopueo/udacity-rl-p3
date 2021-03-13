@@ -125,6 +125,34 @@ class Agent():
 
         self.hard_update_nets()
 
+
+    # Take action according to epsilon-greedy-policy:
+    def action(self, state, i_episode, add_noise=True):
+        if i_episode > EPISODES_BEFORE_TRAINING and self.noise_scale > NOISE_END:
+            #self.noise_scale *= NOISE_REDUCTION
+            self.noise_scale = NOISE_REDUCTION**(i_episode-EPISODES_BEFORE_TRAINING)
+
+        if not add_noise:
+            self.noise_scale = 0.0
+                                    
+        state = torch.from_numpy(state).float().to(device)
+        self.actor_local.eval()
+        with torch.no_grad():
+            action = self.actor_local(state).cpu().data.numpy()
+        self.actor_local.train()
+        
+        # Add noise
+        action += self.noise_scale*self.add_noise2() #works much better than OU Noise process
+        #actions += self.noise_scale*self.noise.sample()
+        return np.clip(action, -1, 1)
+
+
+    def random_action(self):
+        action_size = 2
+        action = 2 * np.random.random_sample(action_size) - 1.0
+        return action
+
+
     # Let the agent learn from experience
     def learn(self):
         # If buffer is sufficiently full, let the agent learn from his experience:
@@ -170,36 +198,6 @@ class Agent():
         self.actor_optimizer.step() 
 
 
-    def hard_update_nets(self):
-        self.soft_update_target_nets(tau=1.0)
-
-
-    # Take action according to epsilon-greedy-policy:
-    def action(self, state, i_episode, add_noise=True):
-        if i_episode > EPISODES_BEFORE_TRAINING and self.noise_scale > NOISE_END:
-            #self.noise_scale *= NOISE_REDUCTION
-            self.noise_scale = NOISE_REDUCTION**(i_episode-EPISODES_BEFORE_TRAINING)
-
-        if not add_noise:
-            self.noise_scale = 0.0
-                                    
-        state = torch.from_numpy(state).float().to(device)
-        self.actor_local.eval()
-        with torch.no_grad():
-            action = self.actor_local(state).cpu().data.numpy()
-        self.actor_local.train()
-        
-        # Add noise
-        action += self.noise_scale*self.add_noise2() #works much better than OU Noise process
-        #actions += self.noise_scale*self.noise.sample()
-        return np.clip(action, -1, 1)
-
-
-    def random_action(self):
-        action_size = 2
-        action = 2 * np.random.random_sample(action_size) - 1.0
-        return action
-
     # Copy weights from short-term model to long-term model
     def soft_update_target_nets(self, tau=0.001):
         for t, l in zip(self.actor_target.parameters(), self.actor_local.parameters() ):
@@ -207,6 +205,10 @@ class Agent():
 
         for t, l in zip(self.critic_target.parameters(), self.critic_local.parameters() ):
             t.data.copy_( (1-tau)*t.data + tau*l.data )
+
+    def hard_update_nets(self):
+        self.soft_update_target_nets(tau=1.0)
+
 
     def reset(self):
         self.noise.reset()
