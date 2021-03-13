@@ -1,14 +1,18 @@
-import numpy as np
 from collections import namedtuple, deque
 import random
+
+import numpy as np
+
+import torch
 from networks_torch import Actor, Critic
+
+
+
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-
 EPISODES_BEFORE_TRAINING = 3
-
 
 class MultiAgent():
     """
@@ -84,7 +88,7 @@ class MultiAgent():
             print("Saving critic network weights to", filepath)
             torch.save(agent.critic_net.state_dict(), filepath)
     
-    def reset():
+    def reset(self):
         for agent in agents:
             agent.reset()
 
@@ -199,7 +203,7 @@ class Agent():
         for t, l in zip(self.critic_target.parameters(), self.critic_local.parameters() ):
             t.data.copy_( (1-tau)*t.data + tau*l.data )
 
-    def reset():
+    def reset(self):
         self.noise.reset()
  
 
