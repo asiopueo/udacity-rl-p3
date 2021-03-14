@@ -4,7 +4,9 @@ import copy
 import numpy as np
 
 import torch
+import torch.optim as optim
 import torch.nn.functional as F
+
 from networks_torch import Actor, Critic
 
 
@@ -26,7 +28,7 @@ class MultiAgent():
     """
         Multi-Agent DDPG according to
     """
-    def __init__(self, state_size, action_size, buffer_size, batch_size, gamma):
+    def __init__(self, state_size, action_size, buffer_size, batch_size, gamma, learn_rate):
 
         self.state_size = state_size
         self.action_size = action_size
@@ -36,8 +38,8 @@ class MultiAgent():
         np.random.seed()
 
         self.agents = []
-        self.agents.append( Agent(state_size=state_size, action_size=action_size, buffer_size=buffer_size, batch_size=batch_size, gamma=gamma) )
-        self.agents.append( Agent(state_size=state_size, action_size=action_size, buffer_size=buffer_size, batch_size=batch_size, gamma=gamma) )
+        self.agents.append( Agent(state_size=state_size, action_size=action_size, buffer_size=buffer_size, batch_size=batch_size, gamma=gamma, learn_rate=learn_rate) )
+        self.agents.append( Agent(state_size=state_size, action_size=action_size, buffer_size=buffer_size, batch_size=batch_size, gamma=gamma, learn_rate=learn_rate) )
         self.num_agents = len(self.agents)
 
         # Initialize replay buffer
@@ -131,7 +133,7 @@ class Agent():
     """
         DDPG-Agent according to 
     """
-    def __init__(self, state_size, action_size, buffer_size, batch_size, gamma):
+    def __init__(self, state_size, action_size, buffer_size, batch_size, gamma, learn_rate):
         if not batch_size < buffer_size:
             raise Exception()
 
@@ -140,6 +142,7 @@ class Agent():
 
         self.buffer_size = buffer_size
         self.batch_size = batch_size
+        self.learn_rate = learn_rate
         self.gamma = gamma
 
         self.noise = OUNoise(action_size)
@@ -151,6 +154,9 @@ class Agent():
 
         self.critic_local = Critic(2*state_size, 2*action_size).to(device)
         self.critic_target = Critic(2*state_size, 2*action_size).to(device)
+
+        self.actor_optimizer = optim.Adam( self.actor_local.parameters(), lr=self.learn_rate )
+        self.critic_optimizer = optim.Adam( self.critic_local.parameters(), lr=self.learn_rate )
 
         self.hard_update_nets()
 

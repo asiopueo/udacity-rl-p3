@@ -29,7 +29,7 @@ print('Size of each action:', action_size)
 
 # Initialize the agent:
 from agent_torch import MultiAgent
-multi_agent = MultiAgent(state_size=state_size, action_size=action_size, buffer_size=10000, batch_size=64, gamma=0.98)
+multi_agent = MultiAgent(state_size=state_size, action_size=action_size, buffer_size=10000, batch_size=64, gamma=0.98, learn_rate=0.0005)
 
 
 EPISODES_BEFORE_TRAINING = 5
@@ -52,7 +52,7 @@ def training(n_episodes=300):
         ticks = 0
         scores = np.zeros(num_agents)
 
-        env_info = env.reset(train_mode=False)[brain_name]   # Reset the environment
+        env_info = env.reset(train_mode=True)[brain_name]   # Reset the environment
         states = env_info.vector_observations                # Get the current state
 
         multi_agent.reset() # Reset the noise process
@@ -76,7 +76,7 @@ def training(n_episodes=300):
             scores += rewards
             states = next_states
             
-            if np.any(dones) is True:
+            if np.any(dones):
                 break
 
             ticks += 1
@@ -92,14 +92,12 @@ def training(n_episodes=300):
         score_trailing_avg_list.append(score_trailing_avg)
 
         print("***********************************************")
-        print("Maximum score of episode {}: {}".format(episode, score_max))
+        print("Maximum score of episode {}: {:.2f}".format(episode, score_max))
         print("Trailing avg. score: {:.2f}".format(score_trailing_avg))
         print("Time consumed: {:.2f} s".format(end-start))
         print("***********************************************")
 
-
-        print("Total score:", score)
-        agent.save_weights("./checkpoints")
+        #agent.save_weights("./checkpoints")
 
         episode += 1
 
