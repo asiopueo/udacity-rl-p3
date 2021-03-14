@@ -4,6 +4,7 @@ import copy
 import numpy as np
 
 import torch
+import torch.nn.functional as F
 from networks_torch import Actor, Critic
 
 
@@ -66,29 +67,33 @@ class MultiAgent():
 
         full_states, states, actions, rewards, full_next_states, next_states, dones = self.replay_buffer.sample_from_buffer()
                  
+        # states.shape[:2] = (64,2)
+        # states.shape[:2] + (self.action_size,) = (64,2,2)
         critic_full_next_actions = torch.zeros(states.shape[:2] + (self.action_size,), dtype=torch.float, device=device)
-
-        print(next_states.shape)
 
         for agent_idx, agent in enumerate(self.agents):
             agent_next_state = next_states[:,agent_idx,:]
-            critic_full_next_actions[:,agent_idx,:] = agent.actor_target.forward(agent_next_state)
-            critic_full_next_actions = critic_full_next_actions.view(-1, self.whole_action_dim)
+            critic_full_next_actions[:, agent_idx,:] = agent.actor_target.forward(agent_next_state)
+            
+        critic_full_next_actions = critic_full_next_actions.view(-1, self.action_size * self.num_agents)
         
-            #agent = self.maddpg_agents[agent_no]
+        for agent_idx, agent in enumerate(self.agents):
             agent_state = states[:, agent_idx,:]
             actor_full_actions = actions.clone() # deep copy
             actor_full_actions[:, agent_idx,:] = agent.actor_local.forward(agent_state)
-            actor_full_actions = actor_full_actions.view(-1, self.whole_action_dim)
+            actor_full_actions = actor_full_actions.view(-1, self.action_size * self.num_agents)
                     
-            full_actions = actions.view(-1, self.whole_action_dim)
+        full_actions = actions.view(64, self.action_size * self.num_agents)
             
-            agent_rewards = rewards[:,agent_idx].view(-1,1) # Wrong result without doing this
-            agent_dones = dones[:,agent_idx].view(-1,1)     # Wrong result without doing this
+        for agent_idx, agent in enumerate(self.agents):    
+            agent_rewards = rewards[:,agent_idx].view(-1,1) # Wrong result without this
+            agent_dones = dones[:,agent_idx].view(-1,1)     # Wrong result without this
 
-            agent_exp = (full_states, full_actions, agent_rewards, full_next_states,  agent_dones, actor_full_actions, critic_full_next_actions)
-            
-            agent.learn( agent_exp )
+        print(full_next_states.shape, critic_full_next_actions.shape)
+
+        agent_exp = (full_states, full_actions, agent_rewards, full_next_states,  agent_dones, actor_full_actions, critic_full_next_actions)
+        
+        agent.learn( agent_exp )
         
 
 
@@ -144,8 +149,8 @@ class Agent():
         self.actor_local = Actor(state_size, action_size).to(device)
         self.actor_target = Actor(state_size, action_size).to(device)
 
-        self.critic_local = Critic(state_size, action_size).to(device)
-        self.critic_target = Critic(state_size, action_size).to(device)
+        self.critic_local = Critic(2*state_size, 2*action_size).to(device)
+        self.critic_target = Critic(2*state_size, 2*action_size).to(device)
 
         self.hard_update_nets()
 
@@ -186,7 +191,7 @@ class Agent():
         # Get Q values from target models
         Q_target_next = self.critic_target(full_next_states, critic_full_next_actions)
         # Compute Q targets for current states (y_i)
-        Q_target = agent_rewards + gamma * Q_target_next * (1 - agent_dones)
+        Q_target = agent_rewards + self.gamma * Q_target_next * (1 - agent_dones)
         # Compute critic loss
         Q_expected = self.critic_local(full_states, full_actions)
         critic_loss = F.mse_loss(input=Q_expected, target=Q_target) #target=Q_targets.detach() #not necessary to detach
