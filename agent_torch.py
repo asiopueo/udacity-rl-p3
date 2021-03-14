@@ -1,6 +1,6 @@
 from collections import namedtuple, deque
 import random
-import copy
+import os, copy
 import numpy as np
 
 import torch
@@ -77,21 +77,17 @@ class MultiAgent():
             agent_next_state = next_states[:,agent_idx,:]
             critic_full_next_actions[:, agent_idx,:] = agent.actor_target.forward(agent_next_state)
             
-        critic_full_next_actions = critic_full_next_actions.view(-1, self.action_size * self.num_agents)
-        
-        for agent_idx, agent in enumerate(self.agents):
             agent_state = states[:, agent_idx,:]
             actor_full_actions = actions.clone() # deep copy
             actor_full_actions[:, agent_idx,:] = agent.actor_local.forward(agent_state)
             actor_full_actions = actor_full_actions.view(-1, self.action_size * self.num_agents)
-                    
-        full_actions = actions.view(64, self.action_size * self.num_agents)
             
-        for agent_idx, agent in enumerate(self.agents):    
             agent_rewards = rewards[:,agent_idx].view(-1,1) # Wrong result without this
             agent_dones = dones[:,agent_idx].view(-1,1)     # Wrong result without this
 
-        print(full_next_states.shape, critic_full_next_actions.shape)
+        critic_full_next_actions = critic_full_next_actions.view(-1, self.action_size * self.num_agents)                  
+        full_actions = actions.view(64, self.action_size * self.num_agents)
+        
 
         agent_exp = (full_states, full_actions, agent_rewards, full_next_states,  agent_dones, actor_full_actions, critic_full_next_actions)
         
@@ -107,11 +103,11 @@ class MultiAgent():
         for id, agent in enumerate(self.agents):
             filepath = os.path.join(path, "actor_weights_latest_" + str(id) + ".pth")
             print("Loading actor network weights from", filepath)
-            agent.load_state_dict(torch.load(filepath, map_location=lambda storage, loc: storage))
+            agent.actor_local.load_state_dict(torch.load(filepath, map_location=lambda storage, loc: storage))
 
             filepath = os.path.join(path, "critic_weights_latest_" + str(id) + ".pth")
             print("Loading critic network weights from", filepath)
-            agent.load_state_dict(torch.load(filepath, map_location=lambda storage, loc: storage))
+            agent.critic_local.load_state_dict(torch.load(filepath, map_location=lambda storage, loc: storage))
             
             self.hard_update_target_nets()
 
@@ -119,10 +115,10 @@ class MultiAgent():
         for id, agent in enumerate(self.agents):
             filepath = os.path.join(path, "actor_weights_latest_" + str(id) + ".pth")
             print("Saving actor network weights to", filepath)
-            torch.save(agent.actor_net.state_dict(), filepath) 
+            torch.save(agent.actor_local.state_dict(), filepath) 
             filepath = os.path.join(path, "critic_weights_latest_" + str(id) + ".pth")
             print("Saving critic network weights to", filepath)
-            torch.save(agent.critic_net.state_dict(), filepath)
+            torch.save(agent.critic_local.state_dict(), filepath)
     
     def reset(self):
         for agent in self.agents:
