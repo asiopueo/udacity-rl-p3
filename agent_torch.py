@@ -27,6 +27,8 @@ class MultiAgent():
     """
     def __init__(self, state_size, action_size, buffer_size, batch_size, gamma):
 
+        self.state_size = state_size
+        self.action_size = action_size
         self.gamma = gamma
 
         random.seed()
@@ -66,7 +68,9 @@ class MultiAgent():
                  
         critic_full_next_actions = torch.zeros(states.shape[:2] + (self.action_size,), dtype=torch.float, device=device)
 
-        for agent_idx, agent in enumerate(self.maddpg_agents):
+        print(next_states.shape)
+
+        for agent_idx, agent in enumerate(self.agents):
             agent_next_state = next_states[:,agent_idx,:]
             critic_full_next_actions[:,agent_idx,:] = agent.actor_target.forward(agent_next_state)
             critic_full_next_actions = critic_full_next_actions.view(-1, self.whole_action_dim)
@@ -229,8 +233,8 @@ class ReplayBuffer():
     def insert_into_buffer(self, state, action, reward, next_state, done):        
         full_state = state.flatten()
         full_next_state = next_state.flatten()
-        #full_state = np.reshape(state, newshape=(-1))
-        #full_next_state = np.reshape(next_state, newshape=(-1))
+        #full_state = np.reshape(state, newshape=(1,2,-1))
+        #full_next_state = np.reshape(next_state, newshape=(1,2,-1))
 
         exp = Experience(full_state, state, action, reward, full_next_state, next_state, done)
         self.replay_buffer.append(exp)
@@ -242,13 +246,13 @@ class ReplayBuffer():
 
         # Reorder experience batch such that we have a batch of states, a batch of actions, a batch of rewards, etc.
         # Eventually add 'if exp is not None'
-        full_states = torch.from_numpy( np.vstack( [exp.full_state for exp in batch if exp is not None] )).float().to(device)
-        states = torch.from_numpy( np.vstack( [exp.state for exp in batch if exp is not None] )).float().to(device)
-        actions = torch.from_numpy( np.vstack( [exp.action for exp in batch if exp is not None] )).float().to(device)
-        rewards = torch.from_numpy( np.vstack( [exp.reward for exp in batch if exp is not None] )).float().to(device)
-        full_next_states = torch.from_numpy( np.vstack( [exp.full_next_state for exp in batch if exp is not None] )).float().to(device)
-        next_states = torch.from_numpy( np.vstack( [exp.next_state for exp in batch if exp is not None] )).float().to(device)
-        dones = torch.from_numpy( np.vstack( [exp.done for exp in batch if exp is not None] ).astype(np.uint8)).float().to(device)
+        full_states = torch.from_numpy( np.array( [exp.full_state for exp in batch if exp is not None] )).float().to(device)
+        states = torch.from_numpy( np.array( [exp.state for exp in batch if exp is not None] )).float().to(device)
+        actions = torch.from_numpy( np.array( [exp.action for exp in batch if exp is not None] )).float().to(device)
+        rewards = torch.from_numpy( np.array( [exp.reward for exp in batch if exp is not None] )).float().to(device)
+        full_next_states = torch.from_numpy( np.array( [exp.full_next_state for exp in batch if exp is not None] )).float().to(device)
+        next_states = torch.from_numpy( np.array( [exp.next_state for exp in batch if exp is not None] )).float().to(device)
+        dones = torch.from_numpy( np.array( [exp.done for exp in batch if exp is not None] ).astype(np.uint8)).float().to(device)
 
         return full_states, states, actions, rewards, full_next_states, next_states, dones
 
