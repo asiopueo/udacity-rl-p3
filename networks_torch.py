@@ -32,7 +32,7 @@ class Actor(nn.Module):
     def forward(self, state):
         x = F.elu(self.fc1(state))
         x = F.elu(self.fc2(x))
-        return F.tanh(self.fc3(x))
+        return torch.tanh(self.fc3(x))
 
 
 class Critic(nn.Module):
