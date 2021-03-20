@@ -29,10 +29,10 @@ print('Size of each action:', action_size)
 
 # Initialize the agent:
 from agent_torch import MultiAgent
-multi_agent = MultiAgent(state_size=state_size, action_size=action_size, buffer_size=10000, batch_size=64, gamma=0.98, learn_rate=0.0005)
+multi_agent = MultiAgent(state_size=state_size, action_size=action_size, buffer_size=10000, batch_size=256, gamma=0.99, learn_rate=0.0001)
 
 
-EPISODES_BEFORE_TRAINING = 5
+EPISODES_BEFORE_TRAINING = 300
 
 ####################################
 #  Main learning loop:
@@ -52,7 +52,7 @@ def training(n_episodes=300):
 
     for episode in range(0, n_episodes):
         ticks = 0
-        scores = np.zeros(num_agents)
+        scores = np.zeros( shape=(num_agents,) )
 
         env_info = env.reset(train_mode=True)[brain_name]   # Reset the environment
         states = env_info.vector_observations                # Get the current state
@@ -65,7 +65,8 @@ def training(n_episodes=300):
             actions = multi_agent.action(states, episode)
             env_info = env.step(actions)[brain_name]
             
-            rewards = env_info.rewards
+            rewards = np.array( env_info.rewards )
+            
             next_states = env_info.vector_observations
             dones = env_info.local_done
 
@@ -99,7 +100,7 @@ def training(n_episodes=300):
         print("Time consumed: {:.2f} s".format(end-start))
         print("***********************************************")
 
-        if score_trailing_avg > ?? and success is False:
+        if score_trailing_avg > 0.5 and success is False:
             print("===============================================")
             print("Challenge solved at episode {}".format(episode))
             print("===============================================")
