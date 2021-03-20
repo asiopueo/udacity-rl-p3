@@ -33,6 +33,7 @@ multi_agent = MultiAgent(state_size=state_size, action_size=action_size, buffer_
 
 
 EPISODES_BEFORE_TRAINING = 300
+NUM_LEARN_STEPS_PER_ENV_STEP = 3
 
 ####################################
 #  Main learning loop:
@@ -40,8 +41,6 @@ EPISODES_BEFORE_TRAINING = 300
 
 
 def training(n_episodes=300):       
-    tick = 0
-
     success = False
 
     score_list = []
@@ -63,6 +62,7 @@ def training(n_episodes=300):
         while True:
             # Select action according to policy:
             actions = multi_agent.action(states, episode)
+            #print (actions)
             env_info = env.step(actions)[brain_name]
             
             rewards = np.array( env_info.rewards )
@@ -74,7 +74,10 @@ def training(n_episodes=300):
             multi_agent.replay_buffer.insert_into_buffer( states, actions, rewards, next_states, dones )
             
             if episode > EPISODES_BEFORE_TRAINING:
-                multi_agent.learn()
+                for _ in range(NUM_LEARN_STEPS_PER_ENV_STEP):
+                    for agent_no in range(num_agents):
+                        multi_agent.learn(agent_no)
+                    multi_agent.soft_update_target_nets()
 
             scores += rewards
             states = next_states
@@ -98,24 +101,25 @@ def training(n_episodes=300):
         print("Maximum score of episode {}: {:.2f}".format(episode, score_max))
         print("Trailing avg. score: {:.2f}".format(score_trailing_avg))
         print("Time consumed: {:.2f} s".format(end-start))
+        print('Noise Scaling: {:.3f}'.format(multi_agent.agents[0].noise_scale))
         print("***********************************************")
 
         if score_trailing_avg > 0.5 and success is False:
-            print("===============================================")
+            print("==============================================================================================")
             print("Challenge solved at episode {}".format(episode))
-            print("===============================================")
+            print("==============================================================================================")
             success = True
 
         episode += 1
 
-        if episode % 100 == 0:
+        if episode % 1000 == 0:
             multi_agent.save_weights("./checkpoints_torch")
 
 
     return score_list, score_trailing_avg_list
 
 
-score_list, score_trailing_avg_list = training(1500)
+score_list, score_trailing_avg_list = training(4000)
 
 
 
