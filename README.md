@@ -3,9 +3,9 @@
 [image1]: https://user-images.githubusercontent.com/10624937/42135623-e770e354-7d12-11e8-998d-29fc74429ca2.gif "Trained Agent"
 [image2]: https://user-images.githubusercontent.com/10624937/42135622-e55fb586-7d12-11e8-8a54-3c31da15a90a.gif "Soccer"
 
-[A full detailed report of this project can be downloaded here.](https://mlgoettingen.s3.eu-central-1.amazonaws.com/DRLND_Report_Project_3.pdf)
-
 # Project 3: Collaboration and Competition
+
+[A full detailed report of this project in form of a pdf-document is contained in this repository.](https://github.com/asiopueo/udacity-rl-p3/blob/master/Report.pdf)
 
 ### Introduction
 
@@ -24,6 +24,39 @@ The task is episodic, and in order to solve the environment, your agents must ge
 
 The environment is considered solved, when the average (over 100 episodes) of those **scores** is at least +0.5.
 
+
+### Dependencies
+
+To set up your python environment to run the code in this repository, follow the instructions below.
+
+1. Create (and activate) a new environment with Python 3.6.
+
+	- __Linux__ or __Mac__: 
+	```bash
+	conda create --name drlnd python=3.9
+	source activate drlnd
+	```
+	- __Windows__: 
+	```bash
+	conda create --name drlnd python=3.9 
+	activate drlnd
+	```
+	
+2. Clone the repository, and navigate to the root (`/`) folder.  Then, install several dependencies.
+    ```bash
+    git clone https://github.com/asiopueo/udacity-rl-p3.git
+    cd udacity_rl_p1/
+    conda install --yes --file requirements.txt
+    ```
+
+3. Create an [IPython kernel](http://ipython.readthedocs.io/en/stable/install/kernel_install.html) for the `drlnd` environment.  
+    ```bash
+    python -m ipykernel install --user --name drlnd --display-name "drlnd"
+    ```
+
+4. Before running code in a notebook, change the kernel to match the `drlnd` environment by using the drop-down `Kernel` menu.
+
+
 ### Getting Started
 
 1. Download the environment from one of the links below.  You need only select the environment that matches your operating system:
@@ -36,11 +69,8 @@ The environment is considered solved, when the average (over 100 episodes) of th
 
     (_For AWS_) If you'd like to train the agent on AWS (and have not [enabled a virtual screen](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Training-on-Amazon-Web-Service.md)), then please use [this link](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P3/Tennis/Tennis_Linux_NoVis.zip) to obtain the "headless" version of the environment.  You will **not** be able to watch the agent without enabling a virtual screen, but you will be able to train the agent.  (_To watch the agent, you should follow the instructions to [enable a virtual screen](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Training-on-Amazon-Web-Service.md), and then download the environment for the **Linux** operating system above._)
 
-2. Place the file in the DRLND GitHub repository, in the `p3_collab-compet/` folder, and unzip (or decompress) the file. 
+2. Place the file in the DRLND GitHub repository, in the `udacity-rl-p3/` folder, and unzip (or decompress) the file. 
 
-### Instructions
-
-Follow the instructions in `Tennis.ipynb` to get started with training your own agent!  
 
 ### (Optional) Challenge: Crawler Environment
 
