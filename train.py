@@ -42,11 +42,13 @@ EPISODES_BEFORE_TRAINING = 5
 def training(n_episodes=300):       
     tick = 0
 
+    success = False
+
     score_list = []
     score_queue = deque(maxlen=100)
     score_trailing_avg_list = []
 
-    #agent.load_weights("./checkpoints")
+    #agent.load_weights("./checkpoints_torch")
 
     for episode in range(0, n_episodes):
         ticks = 0
@@ -97,14 +99,22 @@ def training(n_episodes=300):
         print("Time consumed: {:.2f} s".format(end-start))
         print("***********************************************")
 
-        #agent.save_weights("./checkpoints")
+        if score_trailing_avg > ?? and success is False:
+            print("===============================================")
+            print("Challenge solved at episode {}".format(episode))
+            print("===============================================")
+            success = True
 
         episode += 1
+
+        if episode % 100 == 0:
+            multi_agent.save_weights("./checkpoints_torch")
+
 
     return score_list, score_trailing_avg_list
 
 
-training(30)
+score_list, score_trailing_avg_list = training(1500)
 
 
 
