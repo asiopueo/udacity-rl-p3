@@ -15,7 +15,6 @@ Experience = namedtuple('Experience', ['full_state', 'state', 'action', 'reward'
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-EPISODES_BEFORE_TRAINING = 3
 NOISE_START = 1.0
 NOISE_START=1.0
 NOISE_END=0.1
@@ -32,6 +31,7 @@ class MultiAgent():
 
         self.state_size = state_size
         self.action_size = action_size
+        self.batch_size = batch_size
         self.gamma = gamma
 
         random.seed()
@@ -56,10 +56,6 @@ class MultiAgent():
         actions = np.concatenate(actions, axis=0)
         return actions
 
-    def random_action(self):
-        action_size = 4
-        action = 2 * np.random.random_sample(action_size) - 1.0
-        return action
 
     # Prepares batches before actual learning is done by the agents
     def learn(self):
@@ -86,7 +82,7 @@ class MultiAgent():
             agent_dones = dones[:,agent_idx].view(-1,1)     # Wrong result without this
 
         critic_full_next_actions = critic_full_next_actions.view(-1, self.action_size * self.num_agents)                  
-        full_actions = actions.view(64, self.action_size * self.num_agents)
+        full_actions = actions.view(self.batch_size, self.action_size * self.num_agents)
         
 
         agent_exp = (full_states, full_actions, agent_rewards, full_next_states,  agent_dones, actor_full_actions, critic_full_next_actions)
@@ -152,7 +148,7 @@ class Agent():
         self.critic_target = Critic(2*state_size, 2*action_size).to(device)
 
         self.actor_optimizer = optim.Adam( self.actor_local.parameters(), lr=self.learn_rate )
-        self.critic_optimizer = optim.Adam( self.critic_local.parameters(), lr=self.learn_rate )
+        self.critic_optimizer = optim.Adam( self.critic_local.parameters(), lr= 3*self.learn_rate )
 
         self.hard_update_nets()
 
