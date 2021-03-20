@@ -15,13 +15,11 @@ Experience = namedtuple('Experience', ['full_state', 'state', 'action', 'reward'
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-NOISE_START = 1.0
-NOISE_START=1.0
-NOISE_END=0.1
-NOISE_REDUCTION=0.999
-EPISODES_BEFORE_TRAINING = 300
-NUM_LEARN_STEPS_PER_ENV_STEP = 3
 
+NOISE_START = 1.0
+NOISE_END = 0.1
+NOISE_REDUCTION = 0.999
+EPISODES_BEFORE_TRAINING = 300
 
 class MultiAgent():
     """
@@ -34,9 +32,11 @@ class MultiAgent():
         self.batch_size = batch_size
         self.gamma = gamma
 
+        #seeding()
         random.seed()
         np.random.seed()
-
+        torch.manual_seed(seed=7)
+        
         self.agents = []
         self.agents.append( Agent(state_size=state_size, action_size=action_size, buffer_size=buffer_size, batch_size=batch_size, gamma=gamma, learn_rate=learn_rate) )
         self.agents.append( Agent(state_size=state_size, action_size=action_size, buffer_size=buffer_size, batch_size=batch_size, gamma=gamma, learn_rate=learn_rate) )
@@ -58,7 +58,7 @@ class MultiAgent():
 
 
     # Prepares batches before actual learning is done by the agents
-    def learn(self):
+    def learn(self, agent_no):
         # If buffer is sufficiently full, let the agent learn from his experience:
         if not self.replay_buffer.buffer_usage():
             return
@@ -70,30 +70,30 @@ class MultiAgent():
         critic_full_next_actions = torch.zeros(states.shape[:2] + (self.action_size,), dtype=torch.float, device=device)
 
         for agent_idx, agent in enumerate(self.agents):
-            agent_next_state = next_states[:,agent_idx,:]
+            agent_next_state = next_states[:, agent_idx,:]
             critic_full_next_actions[:, agent_idx,:] = agent.actor_target.forward(agent_next_state)
             
-            agent_state = states[:, agent_idx,:]
-            actor_full_actions = actions.clone() # deep copy
-            actor_full_actions[:, agent_idx,:] = agent.actor_local.forward(agent_state)
-            actor_full_actions = actor_full_actions.view(-1, self.action_size * self.num_agents)
-            
-            agent_rewards = rewards[:,agent_idx].view(-1,1) # Wrong result without this
-            agent_dones = dones[:,agent_idx].view(-1,1)     # Wrong result without this
+        critic_full_next_actions = critic_full_next_actions.view(-1, self.action_size * self.num_agents)  
 
-        critic_full_next_actions = critic_full_next_actions.view(-1, self.action_size * self.num_agents)                  
+        agent = self.agents[agent_no]
+        agent_state = states[:, agent_no,:]
+        actor_full_actions = actions.clone() # deep copy
+        actor_full_actions[:, agent_no,:] = agent.actor_local.forward(agent_state)
+        actor_full_actions = actor_full_actions.view(-1, self.action_size * self.num_agents)
+        
         full_actions = actions.view(self.batch_size, self.action_size * self.num_agents)
-        
 
+        agent_rewards = rewards[:,agent_no].view(-1,1) # Wrong result without this
+        agent_dones = dones[:,agent_no].view(-1,1)     # Wrong result without this
+            
         agent_exp = (full_states, full_actions, agent_rewards, full_next_states,  agent_dones, actor_full_actions, critic_full_next_actions)
-        
         agent.learn( agent_exp )
         
 
 
-    def update_target_nets(self):
+    def soft_update_target_nets(self):
         for agent in self.agents:
-            agent.update_target_nets()
+            agent.soft_update_target_nets()
 
     def load_weights(self, path):
         for id, agent in enumerate(self.agents):
@@ -119,6 +119,13 @@ class MultiAgent():
     def reset(self):
         for agent in self.agents:
             agent.reset()
+
+
+
+
+
+
+
 
 
 class Agent():
@@ -147,25 +154,23 @@ class Agent():
         self.critic_local = Critic(2*state_size, 2*action_size).to(device)
         self.critic_target = Critic(2*state_size, 2*action_size).to(device)
 
-        self.actor_optimizer = optim.Adam( self.actor_local.parameters(), lr=self.learn_rate )
-        self.critic_optimizer = optim.Adam( self.critic_local.parameters(), lr= 3*self.learn_rate )
+        self.actor_optimizer = optim.Adam( self.actor_local.parameters(), lr=self.learn_rate, weight_decay=0.0 )
+        self.critic_optimizer = optim.Adam( self.critic_local.parameters(), lr= 3*self.learn_rate, weight_decay=0.0 )
 
         self.hard_update_nets()
 
 
     # Take action according to epsilon-greedy-policy:
-    def action(self, state, i_episode, add_noise=True):
-        if i_episode > EPISODES_BEFORE_TRAINING and self.noise_scale > NOISE_END:
+    def action(self, state, episode, add_noise=True):
+        if episode > EPISODES_BEFORE_TRAINING and self.noise_scale > NOISE_END:
+            self.noise_scale = NOISE_REDUCTION**(episode-EPISODES_BEFORE_TRAINING)
             #self.noise_scale *= NOISE_REDUCTION
-            self.noise_scale = NOISE_REDUCTION**(i_episode-EPISODES_BEFORE_TRAINING)
 
         if not add_noise:
             self.noise_scale = 0.0
                                     
         state = torch.from_numpy(state).float().to(device)
         self.actor_local.eval()
-
-
         with torch.no_grad():
             action = self.actor_local(state).cpu().data.numpy()
         self.actor_local.train()
@@ -175,34 +180,34 @@ class Agent():
         action += self.noise_scale*self.add_noise2() #works much better than OU Noise process
         return np.clip(action, -1, 1)
 
-
+    # For debugging purposes
     def random_action(self):
-        action_size = 2
-        action = 2 * np.random.random_sample(action_size) - 1.0
+        action = 2 * np.random.random_sample(self.action_size) - 1.0
         return action
-
 
     # Let the agent learn from experience
     def learn(self, experiences):
+        # From above:
+        #(full_states, full_actions, agent_rewards, full_next_states,  agent_dones, actor_full_actions, critic_full_next_actions) = agent_exp
         full_states, full_actions, agent_rewards, full_next_states, agent_dones, actor_full_actions, critic_full_next_actions = experiences
         
         # Get Q values from target models
         Q_target_next = self.critic_target(full_next_states, critic_full_next_actions)
         # Compute Q targets for current states (y_i)
         Q_target = agent_rewards + self.gamma * Q_target_next * (1 - agent_dones)
-        # Compute critic loss
+        # Critic loss
         Q_expected = self.critic_local(full_states, full_actions)
         critic_loss = F.mse_loss(input=Q_expected, target=Q_target) #target=Q_targets.detach() #not necessary to detach
-        # Minimize the loss
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         #torch.nn.utils.clip_grad_norm(self.critic_local.parameters(), 1.0) #clip the gradient for the critic network (Udacity hint)
         self.critic_optimizer.step()
         
-        actor_loss = -self.critic_local.forward(full_states, actor_full_actions).mean() #-ve b'cse we want to do gradient ascent
+        actor_loss = -self.critic_local.forward(full_states, actor_full_actions).mean()
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
-        self.actor_optimizer.step() 
+        self.actor_optimizer.step()
+
 
 
     # Copy weights from short-term model to long-term model
@@ -218,12 +223,17 @@ class Agent():
 
 
     def add_noise2(self):
-        noise = 0.5*np.random.randn(1, self.action_size) #sigma of 0.5 as sigma of 1 will have alot of actions just clipped
+        noise = 0.5 * np.random.randn(1, self.action_size)
         return noise
 
     def reset(self):
         self.noise.reset()
  
+
+
+
+
+
 
 
 class ReplayBuffer():
@@ -234,10 +244,10 @@ class ReplayBuffer():
 
     # Insert experience into memory
     def insert_into_buffer(self, state, action, reward, next_state, done):        
-        full_state = state.flatten()
-        full_next_state = next_state.flatten()
-        #full_state = np.reshape(state, newshape=(1,2,-1))
-        #full_next_state = np.reshape(next_state, newshape=(1,2,-1))
+        #full_state = state.flatten()
+        #full_next_state = next_state.flatten()
+        full_state = np.reshape(state, newshape=(-1))
+        full_next_state = np.reshape(next_state, newshape=(-1))
 
         exp = Experience(full_state, state, action, reward, full_next_state, next_state, done)
         self.replay_buffer.append(exp)
@@ -262,6 +272,13 @@ class ReplayBuffer():
     # Get length of memory
     def buffer_usage(self):
         return len(self.replay_buffer) > self.batch_size
+
+
+
+
+
+
+
 
 
 
