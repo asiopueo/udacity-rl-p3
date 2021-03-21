@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 
 
-def seeding(seed=10):
+def seeding(seed=4):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
