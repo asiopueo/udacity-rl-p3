@@ -23,7 +23,7 @@ EPISODES_BEFORE_TRAINING = 300
 
 class MultiAgent():
     """
-        Multi-Agent DDPG according to
+        Multi-Agent DDPG according to lowe2020multiagent
     """
     def __init__(self, state_size, action_size, buffer_size, batch_size, gamma, learn_rate):
 
@@ -130,7 +130,7 @@ class MultiAgent():
 
 class Agent():
     """
-        DDPG-Agent according to 
+        DDPG-Agent according to lowe2020multiagent
     """
     def __init__(self, state_size, action_size, buffer_size, batch_size, gamma, learn_rate):
         if not batch_size < buffer_size:
@@ -163,7 +163,7 @@ class Agent():
     # Take action according to epsilon-greedy-policy:
     def action(self, state, episode, add_noise=True):
         if episode > EPISODES_BEFORE_TRAINING and self.noise_scale > NOISE_END:
-            self.noise_scale = NOISE_REDUCTION**(episode-EPISODES_BEFORE_TRAINING)
+            self.noise_scale = NOISE_REDUCTION ** (episode-EPISODES_BEFORE_TRAINING)
             #self.noise_scale *= NOISE_REDUCTION
 
         if not add_noise:
@@ -177,7 +177,7 @@ class Agent():
         
         # Add noise
         #actions += self.noise_scale*self.noise.sample()
-        action += self.noise_scale*self.add_noise2() #works much better than OU Noise process
+        action += self.noise_scale*self.add_gaussian_noise()
         return np.clip(action, -1, 1)
 
     # For debugging purposes
@@ -191,18 +191,16 @@ class Agent():
         #(full_states, full_actions, agent_rewards, full_next_states,  agent_dones, actor_full_actions, critic_full_next_actions) = agent_exp
         full_states, full_actions, agent_rewards, full_next_states, agent_dones, actor_full_actions, critic_full_next_actions = experiences
         
-        # Get Q values from target models
         Q_target_next = self.critic_target(full_next_states, critic_full_next_actions)
-        # Compute Q targets for current states (y_i)
         Q_target = agent_rewards + self.gamma * Q_target_next * (1 - agent_dones)
         # Critic loss
         Q_expected = self.critic_local(full_states, full_actions)
-        critic_loss = F.mse_loss(input=Q_expected, target=Q_target) #target=Q_targets.detach() #not necessary to detach
+        critic_loss = F.mse_loss(input=Q_expected, target=Q_target)
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
-        #torch.nn.utils.clip_grad_norm(self.critic_local.parameters(), 1.0) #clip the gradient for the critic network (Udacity hint)
         self.critic_optimizer.step()
         
+        # Actor loss
         actor_loss = -self.critic_local.forward(full_states, actor_full_actions).mean()
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
@@ -222,7 +220,7 @@ class Agent():
         self.soft_update_target_nets(tau=1.0)
 
 
-    def add_noise2(self):
+    def add_gaussian_noise(self):
         noise = 0.5 * np.random.randn(1, self.action_size)
         return noise
 
