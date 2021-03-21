@@ -71,6 +71,15 @@ To set up your python environment to run the code in this repository, follow the
 
 2. Place the file in the DRLND GitHub repository, in the `udacity-rl-p3/` folder, and unzip (or decompress) the file. 
 
+3. Execute the following cells below 'My Implementation':
+   1. 'Initialization'
+   2. 'Hyperparameters'
+   3. 'Network Definitions'
+   4. 'Agent, Multi-Agent, and Replay Buffer'
+
+4. In order to (re-)train the models, execute the two cells below 'Training Loop' (definition of `training()` and execution of the function in the one-liner-cell below)
+5. Alternatively, in order to replay the agent using the pre-trained weights (2000 episodes of training), execute the two cells below 'Replay Loop'
+
 
 ### (Optional) Challenge: Crawler Environment
 
