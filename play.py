@@ -3,7 +3,7 @@ import numpy as np
 import time
 
 #################################
-#  Initialization:
+#   Initialization:
 #################################
 env = UnityEnvironment(file_name="./Tennis_Linux/Tennis.x86_64")
 # get the default brain
@@ -12,7 +12,6 @@ brain = env.brains[brain_name]
 
 #from agent import Agent
 from collections import namedtuple, deque
-import time
 
 # Reset the environment
 env_info = env.reset(train_mode=False)[brain_name]
@@ -21,82 +20,83 @@ env_info = env.reset(train_mode=False)[brain_name]
 num_agents = len(env_info.agents)
 print('Number of agents:', num_agents)
 
+state_size = env_info.vector_observations.shape[1]
+print('Size of each state:', state_size)
+
 # size of each action
 action_size = brain.vector_action_space_size
 print('Size of each action:', action_size)
 
-# Define named tuple 'Experience'; you can use a dictionary alternatively
-Experience = namedtuple('Experience', ['state', 'action', 'reward', 'next_state', 'done'])
-
 # Initialize the agent:
 from agent_torch import MultiAgent
-state_size = 8
-multi_agent = MultiAgent(state_size, action_size, buffer_size=10000, batch_size=64, gamma=0.98)
+multi_agent = MultiAgent(state_size=state_size, action_size=action_size, buffer_size=10000, batch_size=256, gamma=0.99, learn_rate=0.0001)
+multi_agent.load_weights("./checkpoints_torch")
 
 
 
 ####################################
-#  Main learning loop:
+#  Play loop:
 ####################################
 
 # Initial values:
-
 episode = 0
-score = 0           
-tick = 0
 
-score_list = []
-score_trailing_list = deque(maxlen=100)
+def training(n_episodes=300):       
+    score_list = []
+    score_queue = deque(maxlen=100)
+    score_trailing_avg_list = []
+
+    for episode in range(0, n_episodes):
+        ticks = 0
+        scores = np.zeros( shape=(num_agents,) )
+
+        env_info = env.reset(train_mode=True)[brain_name]   # Reset the environment
+        states = env_info.vector_observations               # Get the current state
+
+        multi_agent.reset() # Reset the noise process
+
+        start = time.time()
+        while True:
+            # Select action according to policy:
+            actions = multi_agent.action(states, episode, add_noise=False)
+            #print (actions)
+            env_info = env.step(actions)[brain_name]
+            
+            rewards = np.array( env_info.rewards )
+            next_states = env_info.vector_observations
+            dones = env_info.local_done
+
+            scores += rewards
+            states = next_states
+            
+            if np.any(dones):
+                break
+
+            ticks += 1
+
+        end = time.time()
+
+        # Only the agent with the max score counts per episode:
+        score_max = np.max(scores)
+        score_list.append(score_max)
+        score_queue.append(score_max)
+
+        score_trailing_avg = np.mean(score_queue)
+        score_trailing_avg_list.append(score_trailing_avg)
+
+        print("***********************************************")
+        print("Maximum score of episode {}: {:.2f}".format(episode, score_max))
+        print("Trailing avg. score: {:.2f}".format(score_trailing_avg))
+        print("Time consumed: {:.2f} s".format(end-start))
+        print("***********************************************")
+
+        episode += 1
+
+    return score_list, score_trailing_avg_list
 
 
-#agent.load_weights("./checkpoints")
-
-for episode in range(0, 300):
-    ticks = 0
-    score = 0
-
-    env_info = env.reset(train_mode=False)[brain_name]  # Reset the environment
-    state = env_info.vector_observations[0]             # Get the current state
-
-    start = time.time()
-    while True:
-        # Select action according to policy:
-        #action = multi_agent.action(state, eps)
-        action = multi_agent.random_action()
-
-        # Take action and record the reward and the successive state
-        env_info = env.step(action)[brain_name]
-        
-        reward = env_info.rewards[0]
-        next_state = env_info.vector_observations[0]
-        done = env_info.local_done[0]
-
-        score += reward
-        state = next_state
-        
-        if done is True:
-            break
-
-        ticks += 1
+score_list, score_trailing_avg_list = training(300)
 
 
-    end = time.time()
-
-    score_list.append(score)
-    score_trailing_list.append(score)
-
-    score_avg = np.mean(score_list)
-    score_trailing_avg = np.mean(score_trailing_list)
-
-    print("***********************************************")
-    print("Score of episode {}: {}".format(episode, score))
-    print("Avg. score: {:.2f}".format(score_avg))
-    print("Trailing avg. score: {:.2f}".format(score_trailing_avg))
-    print("Time consumed: {:.2f} s".format(end-start))
-    print("***********************************************")
-
-    episode += 1
-
-env.close()
 
 env.close()

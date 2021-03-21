@@ -33,14 +33,14 @@ multi_agent = MultiAgent(state_size=state_size, action_size=action_size, buffer_
 
 
 EPISODES_BEFORE_TRAINING = 300
-NUM_LEARN_STEPS_PER_ENV_STEP = 3
+LEARNING_STEPS_PER_CYCLE = 3
 
 ####################################
 #  Main learning loop:
 ####################################
 
 
-def training(n_episodes=300):       
+def training(n_episodes=1500):       
     success = False
 
     score_list = []
@@ -74,7 +74,7 @@ def training(n_episodes=300):
             multi_agent.replay_buffer.insert_into_buffer( states, actions, rewards, next_states, dones )
             
             if episode > EPISODES_BEFORE_TRAINING:
-                for _ in range(NUM_LEARN_STEPS_PER_ENV_STEP):
+                for _ in range(LEARNING_STEPS_PER_CYCLE):
                     for agent_no in range(num_agents):
                         multi_agent.learn(agent_no)
                     multi_agent.soft_update_target_nets()
