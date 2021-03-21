@@ -105,7 +105,7 @@ class MultiAgent():
             print("Loading critic network weights from", filepath)
             agent.critic_local.load_state_dict(torch.load(filepath, map_location=lambda storage, loc: storage))
             
-            self.hard_update_target_nets()
+            agent.hard_update_nets()
 
     def save_weights(self, path):
         for id, agent in enumerate(self.agents):

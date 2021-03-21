@@ -39,9 +39,8 @@ multi_agent.load_weights("./checkpoints_torch")
 ####################################
 
 # Initial values:
-episode = 0
 
-def training(n_episodes=300):       
+def play(n_episodes=300):       
     score_list = []
     score_queue = deque(maxlen=100)
     score_trailing_avg_list = []
@@ -50,7 +49,7 @@ def training(n_episodes=300):
         ticks = 0
         scores = np.zeros( shape=(num_agents,) )
 
-        env_info = env.reset(train_mode=True)[brain_name]   # Reset the environment
+        env_info = env.reset(train_mode=False)[brain_name]   # Reset the environment
         states = env_info.vector_observations               # Get the current state
 
         multi_agent.reset() # Reset the noise process
@@ -95,7 +94,7 @@ def training(n_episodes=300):
     return score_list, score_trailing_avg_list
 
 
-score_list, score_trailing_avg_list = training(300)
+score_list, score_trailing_avg_list = play(300)
 
 
 
